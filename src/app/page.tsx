@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { PenLine, MessageCircle, Mail, Users, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { PenLine, MessageCircle, Mail, Users, AlertTriangle, Info, AlertCircle, Bell } from 'lucide-react';
 import { StatCard } from '@/components/ui/stat-card';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
@@ -162,6 +162,7 @@ function ActionIcon({ action }: { action: string | null }) {
     case 'post': return <PenLine size={size} />;
     case 'engage': return <MessageCircle size={size} />;
     case 'send': return <Mail size={size} />;
+    case 'alert': return <Bell size={size} />;
     default: return <Info size={size} />;
   }
 }

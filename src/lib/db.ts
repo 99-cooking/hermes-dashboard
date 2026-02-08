@@ -170,5 +170,18 @@ function migrate(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_experiments_status ON experiments(status);
     CREATE INDEX IF NOT EXISTS idx_activity_action ON activity_log(action);
     CREATE INDEX IF NOT EXISTS idx_activity_ts ON activity_log(ts);
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT NOT NULL,
+      severity TEXT NOT NULL DEFAULT 'info',
+      title TEXT,
+      message TEXT NOT NULL,
+      data TEXT,
+      read INTEGER NOT NULL DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+    CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
   `);
 }

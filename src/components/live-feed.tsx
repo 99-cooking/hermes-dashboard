@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { PenLine, MessageCircle, Mail, Search, Activity, Info, X, Radio } from 'lucide-react';
+import { PenLine, MessageCircle, Mail, Search, Activity, Info, X, Radio, Bell } from 'lucide-react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
 import { timeAgo } from '@/lib/utils';
 import type { ActivityEntry } from '@/types';
@@ -13,6 +13,7 @@ const ACTION_ICONS: Record<string, typeof PenLine> = {
   discover: Search,
   research: Search,
   triage: Activity,
+  alert: Bell,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -22,6 +23,7 @@ const ACTION_COLORS: Record<string, string> = {
   discover: 'text-info',
   research: 'text-info',
   triage: 'text-muted-foreground',
+  alert: 'text-destructive',
 };
 
 export function LiveFeed({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -72,6 +74,7 @@ export function LiveFeed({ open, onClose }: { open: boolean; onClose: () => void
               <option value="discover">Discover</option>
               <option value="research">Research</option>
               <option value="triage">Triage</option>
+              <option value="alert">Alert</option>
             </select>
             <button
               className="w-6 h-6 flex items-center justify-center rounded hover:bg-muted transition-colors text-muted-foreground"

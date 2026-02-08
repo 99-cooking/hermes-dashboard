@@ -2,7 +2,7 @@ import { getDb } from './db';
 import type {
   ContentPost, Lead, Sequence, Suppression, Engagement,
   Signal, Experiment, Learning, DailyMetrics, ActivityEntry,
-  OverviewStats, Alert, FunnelStep, WeeklyKPI,
+  OverviewStats, Alert, FunnelStep, WeeklyKPI, Notification,
 } from '@/types';
 
 // ─── Overview ──────────────────────────────────────────
@@ -88,6 +88,21 @@ export function getAlerts(): Alert[] {
       type: 'info',
       message: `High-relevance signal: ${viral.summary?.slice(0, 80)}...`,
       created_at: new Date().toISOString(),
+    });
+  }
+
+  // Webhook-pushed notifications (unread, last 24h)
+  const notifications = db.prepare(
+    `SELECT id, severity, title, message, created_at FROM notifications
+     WHERE read = 0 AND created_at > datetime('now', '-24 hours')
+     ORDER BY created_at DESC LIMIT 10`
+  ).all() as { id: number; severity: string; title: string | null; message: string; created_at: string }[];
+  for (const n of notifications) {
+    alerts.push({
+      id: `notif-${n.id}`,
+      type: (n.severity === 'error' ? 'error' : n.severity === 'warning' ? 'warning' : 'info') as Alert['type'],
+      message: n.title ? `${n.title}: ${n.message}` : n.message,
+      created_at: n.created_at,
     });
   }
 
@@ -300,4 +315,57 @@ export function getActivityLog(filters?: {
   params.push(filters?.limit ?? 100);
 
   return db.prepare(sql).all(...params) as ActivityEntry[];
+}
+
+// ─── Notifications ────────────────────────────────────
+export function createNotification(data: {
+  type: string;
+  severity?: string;
+  title?: string;
+  message: string;
+  data?: Record<string, unknown>;
+}): number {
+  const db = getDb();
+  const result = db.prepare(
+    `INSERT INTO notifications (type, severity, title, message, data)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    data.type,
+    data.severity || 'info',
+    data.title || null,
+    data.message,
+    data.data ? JSON.stringify(data.data) : null,
+  );
+  return result.lastInsertRowid as number;
+}
+
+export function getNotifications(filters?: {
+  unread_only?: boolean;
+  type?: string;
+  limit?: number;
+}): Notification[] {
+  const db = getDb();
+  let sql = 'SELECT * FROM notifications WHERE 1=1';
+  const params: unknown[] = [];
+
+  if (filters?.unread_only) { sql += ' AND read = 0'; }
+  if (filters?.type) { sql += ' AND type = ?'; params.push(filters.type); }
+
+  sql += ' ORDER BY created_at DESC LIMIT ?';
+  params.push(filters?.limit ?? 50);
+
+  const rows = db.prepare(sql).all(...params) as (Omit<Notification, 'data' | 'read'> & { data: string | null; read: number })[];
+  return rows.map(r => ({
+    ...r,
+    read: r.read === 1,
+    data: r.data ? JSON.parse(r.data) : null,
+  }));
+}
+
+export function markNotificationRead(id: number): void {
+  getDb().prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(id);
+}
+
+export function markAllNotificationsRead(): void {
+  getDb().prepare('UPDATE notifications SET read = 1 WHERE read = 0').run();
 }

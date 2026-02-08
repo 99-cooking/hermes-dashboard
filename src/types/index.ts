@@ -170,6 +170,21 @@ export interface ActivityEntry {
   result: string | null;
 }
 
+// ─── Notifications ────────────────────────────────────
+export type NotificationType = 'daily_report' | 'alert' | 'lead_reply' | 'bounce_spike' | 'experiment_result' | 'custom';
+export type NotificationSeverity = 'info' | 'warning' | 'error';
+
+export interface Notification {
+  id: number;
+  type: NotificationType;
+  severity: NotificationSeverity;
+  title: string | null;
+  message: string;
+  data: Record<string, unknown> | null;
+  read: boolean;
+  created_at: string;
+}
+
 // ─── Dashboard Aggregates ──────────────────────────────
 export interface OverviewStats {
   posts_today: number;
