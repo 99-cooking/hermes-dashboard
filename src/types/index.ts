@@ -185,6 +185,57 @@ export interface Notification {
   created_at: string;
 }
 
+// ─── Agent Runtime ────────────────────────────────────
+export type AgentStatus = 'active' | 'idle' | 'error' | 'planned';
+
+export interface AgentStats {
+  actions_today: number;
+  actions_week: number;
+  last_action: string | null;
+  last_action_at: string | null;
+  top_skills: { skill: string; count: number }[];
+}
+
+export interface AgentRuntime {
+  id: string;
+  status: AgentStatus;
+  stats: AgentStats;
+  recent_activity: ActivityEntry[];
+}
+
+// ─── CRM ──────────────────────────────────────────────
+export interface LeadDetail extends Lead {
+  sequences: Sequence[];
+  timeline: TimelineEvent[];
+}
+
+export interface TimelineEvent {
+  id: number;
+  type: 'sequence_sent' | 'reply_received' | 'stage_change' | 'note' | 'discovery';
+  description: string;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
+// ─── Automations ──────────────────────────────────────
+export interface ApprovalItem {
+  id: string;
+  type: 'content' | 'email';
+  title: string;
+  preview: string;
+  agent: string;
+  created_at: string;
+  platform?: string;
+  tier?: string;
+}
+
+export interface SkillExecution {
+  skill: string;
+  agent: string;
+  count: number;
+  last_run: string | null;
+}
+
 // ─── Dashboard Aggregates ──────────────────────────────
 export interface OverviewStats {
   posts_today: number;

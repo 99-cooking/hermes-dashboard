@@ -6,20 +6,23 @@ import { usePathname } from 'next/navigation';
 import {
   Gauge, PenLine, MessageCircle, Mail,
   FlaskConical, Search, BarChart3, List,
-  MoreHorizontal,
+  MoreHorizontal, Bot, Contact, Zap,
 } from 'lucide-react';
 
 const PRIMARY_ITEMS = [
   { href: '/', label: 'Overview', icon: Gauge },
-  { href: '/content', label: 'Content', icon: PenLine },
+  { href: '/agents', label: 'Agents', icon: Bot },
   { href: '/outreach', label: 'Outreach', icon: Mail },
-  { href: '/kpis', label: 'KPIs', icon: BarChart3 },
+  { href: '/crm', label: 'CRM', icon: Contact },
 ];
 
 const MORE_ITEMS = [
+  { href: '/content', label: 'Content', icon: PenLine },
   { href: '/engagement', label: 'Engagement', icon: MessageCircle },
+  { href: '/automations', label: 'Automations', icon: Zap },
   { href: '/experiments', label: 'Experiments', icon: FlaskConical },
   { href: '/research', label: 'Research', icon: Search },
+  { href: '/kpis', label: 'KPIs', icon: BarChart3 },
   { href: '/activity', label: 'Activity', icon: List },
 ];
 

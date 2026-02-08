@@ -5,13 +5,17 @@ import { usePathname } from 'next/navigation';
 import {
   Gauge, PenLine, MessageCircle, Mail,
   FlaskConical, Search, BarChart3, List,
+  Bot, Contact, Zap,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Overview', icon: Gauge },
+  { href: '/agents', label: 'Agents', icon: Bot },
   { href: '/content', label: 'Content', icon: PenLine },
   { href: '/engagement', label: 'Engage', icon: MessageCircle },
   { href: '/outreach', label: 'Outreach', icon: Mail },
+  { href: '/crm', label: 'CRM', icon: Contact },
+  { href: '/automations', label: 'Automate', icon: Zap },
   { href: '/experiments', label: 'Experiments', icon: FlaskConical },
   { href: '/research', label: 'Research', icon: Search },
   { href: '/kpis', label: 'KPIs', icon: BarChart3 },
