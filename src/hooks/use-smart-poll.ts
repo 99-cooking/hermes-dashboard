@@ -9,6 +9,8 @@ interface UseSmartPollOptions {
   enabled?: boolean;
   /** Fetch immediately on mount (default true) */
   immediate?: boolean;
+  /** When this value changes, immediately re-fetch (e.g. pass realOnly toggle) */
+  key?: unknown;
 }
 
 /**
@@ -21,13 +23,14 @@ export function useSmartPoll<T>(
   fetcher: () => Promise<T>,
   options: UseSmartPollOptions = {},
 ) {
-  const { interval = 30_000, enabled = true, immediate = true } = options;
+  const { interval = 30_000, enabled = true, immediate = true, key } = options;
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
   const fetcherRef = useRef(fetcher);
+  const prevKeyRef = useRef(key);
   fetcherRef.current = fetcher;
 
   const doFetch = useCallback(async () => {
@@ -91,6 +94,14 @@ export function useSmartPoll<T>(
       stopPolling();
     };
   }, [enabled, immediate, doFetch, startPolling, stopPolling]);
+
+  // Re-fetch immediately when key changes (e.g. realOnly toggle)
+  useEffect(() => {
+    if (prevKeyRef.current !== key) {
+      prevKeyRef.current = key;
+      doFetch();
+    }
+  }, [key, doFetch]);
 
   return { data, loading, error, refetch: doFetch };
 }

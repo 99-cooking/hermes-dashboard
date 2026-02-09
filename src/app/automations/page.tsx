@@ -50,7 +50,7 @@ export default function AutomationsPage() {
 
   const { data, loading, refetch } = useSmartPoll<AutomationsData>(
     () => fetch(`/api/automations${realParam}`).then(r => r.json()),
-    { interval: 30_000 },
+    { interval: 30_000, key: realOnly },
   );
 
   if (!data || loading) {

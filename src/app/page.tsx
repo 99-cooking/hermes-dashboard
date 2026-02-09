@@ -22,7 +22,7 @@ export default function OverviewPage() {
 
   const { data, loading } = useSmartPoll<OverviewData>(
     () => fetch(`/api/overview${realParam}`).then(r => r.json()),
-    { interval: 30_000 },
+    { interval: 30_000, key: realOnly },
   );
 
   // Start sync service once

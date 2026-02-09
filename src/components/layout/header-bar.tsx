@@ -23,8 +23,8 @@ export function HeaderBar() {
 
   // Lightweight poll for header stats
   const { data: stats } = useSmartPoll<HeaderStats>(
-    () => fetch('/api/overview').then(r => r.json()).then(d => d.stats),
-    { interval: 60_000 },
+    () => fetch(`/api/overview${realOnly ? '?real=true' : ''}`).then(r => r.json()).then(d => d.stats),
+    { interval: 60_000, key: realOnly },
   );
 
   return (
