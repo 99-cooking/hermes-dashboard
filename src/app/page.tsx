@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   PenLine, MessageCircle, Mail, Users, AlertTriangle, Info, AlertCircle,
   Bell, ChevronRight, Clock, ThumbsUp, ThumbsDown, Loader2, Zap,
-  CheckCircle, Bot,
+  CheckCircle, Bot, Search, Send,
 } from 'lucide-react';
 import Link from 'next/link';
 import { StatCard } from '@/components/ui/stat-card';
@@ -37,6 +37,16 @@ interface ActionItem {
   created_at: string;
 }
 
+interface XBudget {
+  date: string;
+  calls: number;
+  posts: number;
+  daily_search_limit: number;
+  daily_post_limit: number;
+  search_remaining: number;
+  post_remaining: number;
+}
+
 interface OverviewData {
   stats: OverviewStats;
   alerts: Alert[];
@@ -54,6 +64,11 @@ export default function OverviewPage() {
   const { data, loading } = useSmartPoll<OverviewData>(
     () => fetch(`/api/overview${realParam}`).then(r => r.json()),
     { interval: 30_000, key: `${realOnly}-${refreshKey}` },
+  );
+
+  const { data: budget } = useSmartPoll<XBudget>(
+    () => fetch('/api/x-budget').then(r => r.json()),
+    { interval: 60_000 },
   );
 
   // Start sync service once
@@ -114,43 +129,71 @@ export default function OverviewPage() {
         </div>
       )}
 
-      {/* Action Items — pending approvals */}
-      {action_items && action_items.length > 0 && (
-        <div className="card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Zap size={14} className="text-warning" />
-              Action Items
-              <span className="text-[10px] bg-warning/15 text-warning px-2 py-0.5 rounded-full font-semibold">
-                {action_items.length}
-              </span>
+      {/* X API Budget + Action Items row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* X API Budget Widget */}
+        {budget && !('error' in budget) && (
+          <div className="card p-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
+              <Search size={14} />
+              X API Budget
+              <span className="text-[10px] text-muted-foreground font-mono ml-auto">{budget.date}</span>
             </h3>
-            <div className="flex gap-2">
-              <Link
-                href="/content"
-                className="text-[10px] text-primary hover:underline"
-              >
-                Content Queue
-              </Link>
-              <Link
-                href="/outreach"
-                className="text-[10px] text-primary hover:underline"
-              >
-                Outreach Approvals
-              </Link>
+            <div className="space-y-3">
+              <BudgetBar
+                label="Search"
+                used={budget.calls}
+                limit={budget.daily_search_limit}
+                icon={<Search size={12} />}
+              />
+              <BudgetBar
+                label="Posts"
+                used={budget.posts}
+                limit={budget.daily_post_limit}
+                icon={<Send size={12} />}
+              />
             </div>
           </div>
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {action_items.map(item => (
-              <ActionItemCard
-                key={item.id}
-                item={item}
-                onAction={() => setRefreshKey(k => k + 1)}
-              />
-            ))}
+        )}
+
+        {/* Action Items — pending approvals */}
+        {action_items && action_items.length > 0 && (
+          <div className="card p-4 lg:col-span-2">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Zap size={14} className="text-warning" />
+                Action Items
+                <span className="text-[10px] bg-warning/15 text-warning px-2 py-0.5 rounded-full font-semibold">
+                  {action_items.length}
+                </span>
+              </h3>
+              <div className="flex gap-2">
+                <Link
+                  href="/content"
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  Content Queue
+                </Link>
+                <Link
+                  href="/outreach"
+                  className="text-[10px] text-primary hover:underline"
+                >
+                  Outreach Approvals
+                </Link>
+              </div>
+            </div>
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {action_items.map(item => (
+                <ActionItemCard
+                  key={item.id}
+                  item={item}
+                  onAction={() => setRefreshKey(k => k + 1)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -266,6 +309,34 @@ export default function OverviewPage() {
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function BudgetBar({ label, used, limit, icon }: { label: string; used: number; limit: number; icon: React.ReactNode }) {
+  const pct = Math.min(100, (used / limit) * 100);
+  const isHigh = pct >= 80;
+  const isDepleted = pct >= 100;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="flex items-center gap-1.5 text-muted-foreground">
+          {icon}
+          {label}
+        </span>
+        <span className={`font-mono font-medium ${isDepleted ? 'text-destructive' : isHigh ? 'text-warning' : ''}`}>
+          {used}/{limit}
+        </span>
+      </div>
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${
+            isDepleted ? 'bg-destructive' : isHigh ? 'bg-warning' : 'bg-primary'
+          }`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
