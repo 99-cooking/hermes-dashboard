@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { seedChatMessages } from './seed-chat';
 import path from 'path';
 
 const DB_PATH = process.env.HERMES_DB_PATH || path.join(process.cwd(), 'hermes.db');
@@ -12,6 +13,7 @@ export function getDb(): Database.Database {
     _db.pragma('foreign_keys = ON');
     _db.pragma('busy_timeout = 5000');
     migrate(_db);
+    seedChatMessages(_db);
   }
   return _db;
 }
@@ -190,7 +192,23 @@ function migrate(db: Database.Database) {
       PRIMARY KEY (table_name, record_id)
     );
 
-    // Column migrations (safe to re-run)
-    try { db.exec("ALTER TABLE leads ADD COLUMN pause_outreach INTEGER DEFAULT 0"); } catch (e) { /* column exists */ }
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id TEXT NOT NULL,
+      from_agent TEXT NOT NULL,
+      to_agent TEXT,
+      content TEXT NOT NULL,
+      message_type TEXT NOT NULL DEFAULT 'text',
+      metadata TEXT,
+      read_at INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_messages_agents ON messages(from_agent, to_agent);
+
   `);
+
+  // Column migrations (safe to re-run)
+  try { db.exec("ALTER TABLE leads ADD COLUMN pause_outreach INTEGER DEFAULT 0"); } catch { /* column exists */ }
 }

@@ -268,3 +268,26 @@ export interface WeeklyKPI {
   impressions: number;
   engagement_rate: number;
 }
+
+export type ChatMessageType = 'text' | 'system' | 'handoff' | 'status';
+
+export interface ChatMessage {
+  id: number;
+  conversation_id: string;
+  from_agent: string;
+  to_agent: string | null;
+  content: string;
+  message_type: ChatMessageType;
+  metadata: Record<string, unknown> | null;
+  read_at: number | null;
+  created_at: number;
+  pendingStatus?: 'sending' | 'failed';
+}
+
+export interface ChatConversation {
+  id: string;
+  last_message_at: number;
+  message_count: number;
+  unread_count: number;
+  last_message: ChatMessage | null;
+}
