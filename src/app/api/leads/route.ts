@@ -4,9 +4,10 @@ import { writebackLeadStatus } from '@/lib/writeback';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
+  const real = searchParams.get('real') === 'true';
 
   if (searchParams.get('funnel') === 'true') {
-    return NextResponse.json(getLeadFunnel());
+    return NextResponse.json(getLeadFunnel({ excludeSeed: real }));
   }
 
   const leads = getLeads({
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     segment: searchParams.get('segment') || undefined,
     sort: searchParams.get('sort') || undefined,
     order: (searchParams.get('order') as 'asc' | 'desc') || undefined,
+    excludeSeed: real,
   });
   return NextResponse.json(leads);
 }

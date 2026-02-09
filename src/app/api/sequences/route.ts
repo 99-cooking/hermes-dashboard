@@ -4,9 +4,11 @@ import { writebackSequenceStatus } from '@/lib/writeback';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
+  const real = searchParams.get('real') === 'true';
   const sequences = getSequences({
     status: searchParams.get('status') || undefined,
     lead_id: searchParams.get('lead_id') || undefined,
+    excludeSeed: real,
   });
   return NextResponse.json(sequences);
 }

@@ -6,6 +6,7 @@ import {
   Calendar, Activity, Timer, ThumbsUp, ThumbsDown, Loader2,
 } from 'lucide-react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
+import { useDashboard } from '@/store';
 import { timeAgo } from '@/lib/utils';
 import type { ApprovalItem, SkillExecution } from '@/types';
 
@@ -44,8 +45,11 @@ const AGENT_BG: Record<string, string> = {
 };
 
 export default function AutomationsPage() {
+  const { realOnly } = useDashboard();
+  const realParam = realOnly ? '?real=true' : '';
+
   const { data, loading, refetch } = useSmartPoll<AutomationsData>(
-    () => fetch('/api/automations').then(r => r.json()),
+    () => fetch(`/api/automations${realParam}`).then(r => r.json()),
     { interval: 30_000 },
   );
 
@@ -151,7 +155,7 @@ export default function AutomationsPage() {
           ) : (
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {approvals.map(item => (
-                <ApprovalCard key={item.id} item={item} onAction={refetch} />
+                <ApprovalCardComponent key={item.id} item={item} onAction={refetch} />
               ))}
             </div>
           )}
@@ -212,7 +216,7 @@ export default function AutomationsPage() {
                 <div
                   key={hour}
                   className="flex-1 flex flex-col items-center justify-end gap-1 group"
-                  title={`${hour}:00 — ${count} actions`}
+                  title={`${hour}:00 \u2014 ${count} actions`}
                 >
                   {count > 0 && (
                     <span className="text-[8px] font-mono text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
@@ -243,7 +247,7 @@ export default function AutomationsPage() {
   );
 }
 
-function ApprovalCard({ item, onAction }: { item: ApprovalItem; onAction: () => void }) {
+function ApprovalCardComponent({ item, onAction }: { item: ApprovalItem; onAction: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null);
 
   async function handleAction(action: 'approve' | 'reject') {

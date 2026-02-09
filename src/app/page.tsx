@@ -5,6 +5,7 @@ import { PenLine, MessageCircle, Mail, Users, AlertTriangle, Info, AlertCircle, 
 import { StatCard } from '@/components/ui/stat-card';
 import { TrendChart } from '@/components/ui/trend-chart';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
+import { useDashboard } from '@/store';
 import { timeAgo } from '@/lib/utils';
 import type { OverviewStats, Alert, ActivityEntry, DailyMetrics } from '@/types';
 
@@ -16,8 +17,11 @@ interface OverviewData {
 }
 
 export default function OverviewPage() {
+  const { realOnly } = useDashboard();
+  const realParam = realOnly ? '?real=true' : '';
+
   const { data, loading } = useSmartPoll<OverviewData>(
-    () => fetch('/api/overview').then(r => r.json()),
+    () => fetch(`/api/overview${realParam}`).then(r => r.json()),
     { interval: 30_000 },
   );
 

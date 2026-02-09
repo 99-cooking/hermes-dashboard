@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { SignalCard } from '@/components/ui/signal-card';
+import { useDashboard } from '@/store';
 import type { Signal, SignalType } from '@/types';
 
 const SIGNAL_TYPES: { key: string; label: string }[] = [
@@ -18,14 +19,16 @@ export default function ResearchPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [typeFilter, setTypeFilter] = useState('');
   const [relevanceFilter, setRelevanceFilter] = useState('');
+  const { realOnly } = useDashboard();
 
   useEffect(() => {
     const params = new URLSearchParams();
     if (typeFilter) params.set('type', typeFilter);
     if (relevanceFilter) params.set('relevance', relevanceFilter);
+    if (realOnly) params.set('real', 'true');
     const q = params.toString();
     fetch(`/api/signals${q ? '?' + q : ''}`).then(r => r.json()).then(setSignals).catch(() => {});
-  }, [typeFilter, relevanceFilter]);
+  }, [typeFilter, relevanceFilter, realOnly]);
 
   const todaySignals = signals.filter(s => s.date === new Date().toISOString().slice(0, 10));
   const otherSignals = signals.filter(s => s.date !== new Date().toISOString().slice(0, 10));

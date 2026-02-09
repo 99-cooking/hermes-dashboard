@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { SignalCard } from '@/components/ui/signal-card';
 import { ExternalLink, Copy, Check } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
+import { useDashboard } from '@/store';
 import type { Engagement, Signal } from '@/types';
 
 type Tab = 'x' | 'linkedin' | 'signals';
@@ -15,11 +16,13 @@ export default function EngagementPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [tab, setTab] = useState<Tab>('x');
   const [copied, setCopied] = useState<number | null>(null);
+  const { realOnly } = useDashboard();
 
   useEffect(() => {
-    fetch('/api/engagement').then(r => r.json()).then(setEngagements).catch(() => {});
-    fetch('/api/signals').then(r => r.json()).then(setSignals).catch(() => {});
-  }, []);
+    const realParam = realOnly ? '?real=true' : '';
+    fetch(`/api/engagement${realParam}`).then(r => r.json()).then(setEngagements).catch(() => {});
+    fetch(`/api/signals${realParam}`).then(r => r.json()).then(setSignals).catch(() => {});
+  }, [realOnly]);
 
   const xEngagements = engagements.filter(e => e.platform === 'x');
   const linkedInQueue = engagements.filter(e => e.platform === 'linkedin' && e.action_type === 'comment');
@@ -56,10 +59,10 @@ export default function EngagementPage() {
             columns={[
               { key: 'action_type', label: 'Action', render: (r: Engagement) => <Badge status={r.action_type || 'reply'} /> },
               { key: 'target_username', label: 'Target', render: (r: Engagement) => (
-                <span className="font-mono text-xs">@{r.target_username || '—'}</span>
+                <span className="font-mono text-xs">@{r.target_username || '\u2014'}</span>
               )},
               { key: 'our_text', label: 'Text', render: (r: Engagement) => (
-                <span className="text-sm max-w-md truncate block">{r.our_text || '—'}</span>
+                <span className="text-sm max-w-md truncate block">{r.our_text || '\u2014'}</span>
               )},
               { key: 'target_url', label: 'Link', render: (r: Engagement) => r.target_url ? (
                 <a href={r.target_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">

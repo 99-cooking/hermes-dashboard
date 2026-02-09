@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { maybeSeedExclude } from '@/lib/seed-filter';
 import type { Lead, Sequence, FunnelStep } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -62,8 +63,9 @@ export async function GET(request: Request) {
   const status = searchParams.get('status');
   const tier = searchParams.get('tier');
   const search = searchParams.get('search');
+  const seedExcludeLeads = maybeSeedExclude(request, 'leads');
 
-  let sql = 'SELECT * FROM leads WHERE 1=1';
+  let sql = `SELECT * FROM leads WHERE 1=1${seedExcludeLeads}`;
   const params: unknown[] = [];
 
   if (status) { sql += ' AND status = ?'; params.push(status); }
@@ -80,15 +82,15 @@ export async function GET(request: Request) {
   // Funnel stats
   const stages = ['new', 'validated', 'contacted', 'replied', 'interested', 'booked', 'qualified', 'disqualified'];
   const funnel: FunnelStep[] = stages.map(name => {
-    const row = db.prepare('SELECT COUNT(*) as c FROM leads WHERE status = ?').get(name) as { c: number };
+    const row = db.prepare(`SELECT COUNT(*) as c FROM leads WHERE status = ?${seedExcludeLeads}`).get(name) as { c: number };
     return { name, value: row?.c ?? 0 };
   });
 
   // Summary
-  const totalLeads = (db.prepare('SELECT COUNT(*) as c FROM leads').get() as { c: number })?.c ?? 0;
-  const avgScore = (db.prepare('SELECT AVG(score) as avg FROM leads WHERE score IS NOT NULL').get() as { avg: number | null })?.avg ?? 0;
+  const totalLeads = (db.prepare(`SELECT COUNT(*) as c FROM leads WHERE 1=1${seedExcludeLeads}`).get() as { c: number })?.c ?? 0;
+  const avgScore = (db.prepare(`SELECT AVG(score) as avg FROM leads WHERE score IS NOT NULL${seedExcludeLeads}`).get() as { avg: number | null })?.avg ?? 0;
   const tierBreakdown = db.prepare(
-    'SELECT tier, COUNT(*) as c FROM leads WHERE tier IS NOT NULL GROUP BY tier ORDER BY tier'
+    `SELECT tier, COUNT(*) as c FROM leads WHERE tier IS NOT NULL${seedExcludeLeads} GROUP BY tier ORDER BY tier`
   ).all() as { tier: string; c: number }[];
 
   return NextResponse.json({

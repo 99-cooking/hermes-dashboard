@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { PenLine, MessageCircle, Mail, Search, Info, Activity } from 'lucide-react';
 import { timeAgo } from '@/lib/utils';
+import { useDashboard } from '@/store';
 import type { ActivityEntry } from '@/types';
 
 const ACTION_FILTERS = [
@@ -18,11 +19,15 @@ const ACTION_FILTERS = [
 export default function ActivityPage() {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [filter, setFilter] = useState('');
+  const { realOnly } = useDashboard();
 
   useEffect(() => {
-    const params = filter ? `?action=${filter}&limit=200` : '?limit=200';
-    fetch(`/api/activity${params}`).then(r => r.json()).then(setEntries).catch(() => {});
-  }, [filter]);
+    const params = new URLSearchParams();
+    if (filter) params.set('action', filter);
+    params.set('limit', '200');
+    if (realOnly) params.set('real', 'true');
+    fetch(`/api/activity?${params}`).then(r => r.json()).then(setEntries).catch(() => {});
+  }, [filter, realOnly]);
 
   return (
     <div className="space-y-6 animate-in">
@@ -64,7 +69,7 @@ export default function ActivityPage() {
                           {entry.action}
                         </span>
                       )}
-                      <span className="text-sm">{entry.detail || '—'}</span>
+                      <span className="text-sm">{entry.detail || '\u2014'}</span>
                     </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {timeAgo(entry.ts)}

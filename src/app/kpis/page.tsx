@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { TrendChart } from '@/components/ui/trend-chart';
+import { useDashboard } from '@/store';
 import type { DailyMetrics, WeeklyKPI } from '@/types';
 
 // 90-day targets from the plan
@@ -17,13 +18,15 @@ const TARGETS = {
 export default function KPIsPage() {
   const [daily, setDaily] = useState<DailyMetrics[]>([]);
   const [weekly, setWeekly] = useState<WeeklyKPI[]>([]);
+  const { realOnly } = useDashboard();
 
   useEffect(() => {
-    fetch('/api/kpis').then(r => r.json()).then(data => {
+    const realParam = realOnly ? '&real=true' : '';
+    fetch(`/api/kpis?weeks=12${realParam}`).then(r => r.json()).then(data => {
       setDaily(data.daily || []);
       setWeekly(data.weekly || []);
     }).catch(() => {});
-  }, []);
+  }, [realOnly]);
 
   const weeklyReversed = [...weekly].reverse();
   const thisWeek = weekly[0];
@@ -132,7 +135,7 @@ function MetricRow({ label, current, prev, target, suffix = '' }: {
       <td>
         <span className={`text-xs font-mono ${up ? 'text-success' : 'text-destructive'}`}>
           {up ? '+' : ''}{diff.toFixed(1)}%
-          {up ? ' ↑' : ' ↓'}
+          {up ? ' \u2191' : ' \u2193'}
         </span>
       </td>
     </tr>

@@ -4,10 +4,12 @@ import { writebackContentStatus } from '@/lib/writeback';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
+  const real = searchParams.get('real') === 'true';
   const posts = getContentPosts({
     status: searchParams.get('status') || undefined,
     platform: searchParams.get('platform') || undefined,
     pillar: searchParams.get('pillar') ? Number(searchParams.get('pillar')) : undefined,
+    excludeSeed: real,
   });
   return NextResponse.json(posts);
 }

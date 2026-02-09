@@ -7,6 +7,7 @@ import { FunnelChart } from '@/components/ui/funnel-chart';
 import { ApprovalCard } from '@/components/ui/approval-card';
 import { formatDateTime } from '@/lib/utils';
 import { toast } from '@/components/ui/toast';
+import { useDashboard } from '@/store';
 import type { Lead, Sequence, FunnelStep, Suppression } from '@/types';
 
 type Tab = 'pipeline' | 'leads' | 'sequences' | 'approvals' | 'suppression';
@@ -20,16 +21,19 @@ export default function OutreachPage() {
   const [tab, setTab] = useState<Tab>('pipeline');
   const [tierFilter, setTierFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const { realOnly } = useDashboard();
 
   const load = useCallback(() => {
-    fetch('/api/outreach').then(r => r.json()).then(data => {
+    const realParam = realOnly ? '&real=true' : '';
+    fetch(`/api/outreach?_=1${realParam}`).then(r => r.json()).then(data => {
       setLeads(data.leads || []);
       setFunnel(data.funnel || []);
       setPendingApprovals(data.pendingApprovals || []);
     }).catch(() => {});
-    fetch('/api/sequences').then(r => r.json()).then(setSequences).catch(() => {});
-    fetch('/api/suppression').then(r => r.json()).then(setSuppression).catch(() => {});
-  }, []);
+    const realParam2 = realOnly ? '?real=true' : '';
+    fetch(`/api/sequences${realParam2}`).then(r => r.json()).then(setSequences).catch(() => {});
+    fetch(`/api/suppression${realParam2}`).then(r => r.json()).then(setSuppression).catch(() => {});
+  }, [realOnly]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -134,7 +138,7 @@ export default function OutreachPage() {
                   <span className={`badge ${r.tier === 'A' ? 'bg-emerald-900/60 text-emerald-300' : r.tier === 'B' ? 'bg-blue-900/60 text-blue-300' : 'bg-zinc-700 text-zinc-300'}`}>
                     {r.tier}
                   </span>
-                ) : <span>—</span> },
+                ) : <span>\u2014</span> },
                 { key: 'status', label: 'Status', render: (r: Lead) => (
                   <select
                     className="bg-muted/50 border border-border rounded px-2 py-0.5 text-xs"
@@ -147,10 +151,10 @@ export default function OutreachPage() {
                   </select>
                 )},
                 { key: 'score', label: 'Score', sortable: true, render: (r: Lead) => (
-                  <span className="font-mono text-xs">{r.score ?? '—'}</span>
+                  <span className="font-mono text-xs">{r.score ?? '\u2014'}</span>
                 )},
                 { key: 'source', label: 'Source', render: (r: Lead) => (
-                  <span className="text-xs text-muted-foreground">{r.source || '—'}</span>
+                  <span className="text-xs text-muted-foreground">{r.source || '\u2014'}</span>
                 )},
                 { key: 'last_touch_at', label: 'Last Touch', render: (r: Lead) => (
                   <span className="text-xs">{formatDateTime(r.last_touch_at)}</span>
@@ -174,7 +178,7 @@ export default function OutreachPage() {
               )},
               { key: 'step', label: 'Step' },
               { key: 'subject', label: 'Subject', render: (r: Sequence) => (
-                <span className="text-sm max-w-xs truncate block">{r.subject || '—'}</span>
+                <span className="text-sm max-w-xs truncate block">{r.subject || '\u2014'}</span>
               )},
               { key: 'status', label: 'Status', render: (r: Sequence) => <Badge status={r.status || 'queued'} /> },
               { key: 'tier', label: 'Tier' },
@@ -201,7 +205,7 @@ export default function OutreachPage() {
                 key={seq.id}
                 id={seq.id}
                 title={seq.subject || 'Untitled Email'}
-                subtitle={`Step ${seq.step} — ${seq.sequence_name || 'Unknown Sequence'} — Tier ${seq.tier || '?'}`}
+                subtitle={`Step ${seq.step} \u2014 ${seq.sequence_name || 'Unknown Sequence'} \u2014 Tier ${seq.tier || '?'}`}
                 body={seq.body || ''}
                 status={seq.status || 'pending_approval'}
                 meta={`Scheduled: ${formatDateTime(seq.scheduled_for)}`}

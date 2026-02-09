@@ -278,8 +278,11 @@ function syncXResearch() {
 
 // ─── Listening Signals ─────────────────────────────────
 function syncListeningSignals() {
-  const items = readJson<ResearchSignal[]>('listening-signals.json');
+  // Handle both flat array [...] and wrapped {signals: [...], date: ...} formats
+  const raw = readJson<ResearchSignal[] | { signals?: ResearchSignal[]; date?: string }>('listening-signals.json');
+  const items = Array.isArray(raw) ? raw : (raw as { signals?: ResearchSignal[] })?.signals;
   if (!items || !Array.isArray(items)) return;
+  const wrapperDate = !Array.isArray(raw) ? (raw as { date?: string })?.date : undefined;
   const db = getDb();
   const insert = db.prepare(`
     INSERT INTO signals (date, type, username, tweet_url, summary, relevance, action_taken, likes, impressions)
@@ -290,7 +293,7 @@ function syncListeningSignals() {
     for (const s of items) {
       if (exists.get(s.summary || '', s.username || '')) continue;
       insert.run(
-        s.date || new Date().toISOString().slice(0, 10),
+        s.date || wrapperDate || new Date().toISOString().slice(0, 10),
         s.type || 'opportunity',
         s.username || null,
         s.tweet_url || s.url || null,
@@ -377,6 +380,15 @@ function syncExperimentLearnings() {
 }
 
 // ─── Leads ─────────────────────────────────────────────
+// ICP segment number→name mapping (for legacy skill output)
+const ICP_SEGMENTS: Record<number, string> = {
+  1: 'AI Agents / Orchestration',
+  2: 'Business Automation',
+  3: 'Internal Ops Bots',
+  4: 'OpenClaw Adjacent',
+  5: 'Solana / Crypto',
+};
+
 interface LeadItem {
   id?: string;
   first_name?: string;
@@ -397,10 +409,18 @@ interface LeadItem {
   reply_type?: string;
   notes?: string;
   created_at?: string;
+  // Legacy field names from older skill output
+  contact_name?: string;
+  contact_email?: string;
+  contact_title?: string;
+  icp_segment?: number;
+  discovered_at?: string;
 }
 
 function syncLeads() {
-  const items = readJson<LeadItem[]>('leads.json');
+  // Handle both flat array [...] and wrapped {leads: [...]} formats
+  const raw = readJson<LeadItem[] | { leads?: LeadItem[] }>('leads.json');
+  const items = Array.isArray(raw) ? raw : (raw as { leads?: LeadItem[] })?.leads;
   if (!items || !Array.isArray(items)) return;
   const db = getDb();
   const upsert = db.prepare(`
@@ -414,14 +434,24 @@ function syncLeads() {
   db.transaction(() => {
     for (const l of items) {
       if (!l.id) continue;
+      // Normalize legacy field names from older skill output
+      const nameParts = l.contact_name?.split(' ') || [];
+      const firstName = l.first_name || nameParts[0] || null;
+      const lastName = l.last_name || nameParts.slice(1).join(' ') || null;
+      const email = l.email || l.contact_email || null;
+      const title = l.title || l.contact_title || null;
+      const segment = l.industry_segment
+        || (typeof l.icp_segment === 'number' ? ICP_SEGMENTS[l.icp_segment] : null)
+        || null;
+      const createdAt = l.created_at || l.discovered_at || new Date().toISOString();
       upsert.run(
-        l.id, l.first_name || null, l.last_name || null, l.title || null,
-        l.company || null, l.company_size || null, l.industry_segment || null,
-        l.source || null, l.email || null, l.linkedin_url || null,
+        l.id, firstName, lastName, title,
+        l.company || null, l.company_size || null, segment,
+        l.source || null, email, l.linkedin_url || null,
         l.status || 'new', l.score || null, l.tier || null,
         l.last_touch_at || null, l.next_action_at || null,
         l.sequence_name || null, l.reply_type || null, l.notes || null,
-        l.created_at || new Date().toISOString(),
+        createdAt,
       );
     }
   })();

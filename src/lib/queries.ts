@@ -6,32 +6,36 @@ import type {
 } from '@/types';
 
 // ─── Overview ──────────────────────────────────────────
-export function getOverviewStats(): OverviewStats {
+export function getOverviewStats(filters?: { excludeSeed?: boolean }): OverviewStats {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
 
+  const sf = filters?.excludeSeed ? seedFilter : () => '';
+
   const posts_today = (db.prepare(
-    `SELECT COUNT(*) as c FROM content_posts WHERE date(published_at) = ? OR date(created_at) = ?`
+    `SELECT COUNT(*) as c FROM content_posts WHERE (date(published_at) = ? OR date(created_at) = ?) ${sf('content_posts')}`
   ).get(today, today) as { c: number })?.c ?? 0;
 
   const engagement_today = (db.prepare(
-    `SELECT COUNT(*) as c FROM engagements WHERE date(created_at) = ?`
+    `SELECT COUNT(*) as c FROM engagements WHERE date(created_at) = ? ${sf('engagements')}`
   ).get(today) as { c: number })?.c ?? 0;
 
   const emails_sent = (db.prepare(
-    `SELECT COUNT(*) as c FROM sequences WHERE status = 'sent' AND date(sent_at) = ?`
+    `SELECT COUNT(*) as c FROM sequences WHERE status = 'sent' AND date(sent_at) = ? ${sf('sequences')}`
   ).get(today) as { c: number })?.c ?? 0;
 
   const pipeline_count = (db.prepare(
-    `SELECT COUNT(*) as c FROM leads WHERE status IN ('interested', 'booked')`
+    `SELECT COUNT(*) as c FROM leads WHERE status IN ('interested', 'booked') ${sf('leads')}`
   ).get() as { c: number })?.c ?? 0;
 
   return { posts_today, engagement_today, emails_sent, pipeline_count };
 }
 
-export function getAlerts(): Alert[] {
+export function getAlerts(filters?: { excludeSeed?: boolean }): Alert[] {
   const db = getDb();
   const alerts: Alert[] = [];
+
+  const sf = filters?.excludeSeed ? seedFilter : () => '';
 
   // Bounce rate check
   const metrics = db.prepare(
@@ -50,7 +54,7 @@ export function getAlerts(): Alert[] {
   const stale = (db.prepare(
     `SELECT COUNT(*) as c FROM content_posts
      WHERE status = 'pending_approval'
-     AND created_at < datetime('now', '-24 hours')`
+     AND created_at < datetime('now', '-24 hours') ${sf('content_posts')}`
   ).get() as { c: number })?.c ?? 0;
   if (stale > 0) {
     alerts.push({
@@ -65,7 +69,7 @@ export function getAlerts(): Alert[] {
   const staleEmails = (db.prepare(
     `SELECT COUNT(*) as c FROM sequences
      WHERE status = 'pending_approval'
-     AND created_at < datetime('now', '-24 hours')`
+     AND created_at < datetime('now', '-24 hours') ${sf('sequences')}`
   ).get() as { c: number })?.c ?? 0;
   if (staleEmails > 0) {
     alerts.push({
@@ -79,7 +83,7 @@ export function getAlerts(): Alert[] {
   // High engagement signal (viral)
   const viral = db.prepare(
     `SELECT summary FROM signals
-     WHERE relevance = 'high' AND date(created_at) = date('now')
+     WHERE relevance = 'high' AND date(created_at) = date('now') ${sf('signals')}
      ORDER BY created_at DESC LIMIT 1`
   ).get() as { summary: string } | undefined;
   if (viral) {
@@ -114,6 +118,7 @@ export function getContentPosts(filters?: {
   status?: string;
   platform?: string;
   pillar?: number;
+  excludeSeed?: boolean;
 }): ContentPost[] {
   const db = getDb();
   let sql = 'SELECT * FROM content_posts WHERE 1=1';
@@ -122,6 +127,7 @@ export function getContentPosts(filters?: {
   if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
   if (filters?.platform) { sql += ' AND platform = ?'; params.push(filters.platform); }
   if (filters?.pillar) { sql += ' AND pillar = ?'; params.push(filters.pillar); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('content_posts')}`; }
 
   sql += ' ORDER BY created_at DESC';
   return db.prepare(sql).all(...params) as ContentPost[];
@@ -139,6 +145,7 @@ export function getLeads(filters?: {
   segment?: string;
   sort?: string;
   order?: 'asc' | 'desc';
+  excludeSeed?: boolean;
 }): Lead[] {
   const db = getDb();
   let sql = 'SELECT * FROM leads WHERE 1=1';
@@ -147,6 +154,7 @@ export function getLeads(filters?: {
   if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
   if (filters?.tier) { sql += ' AND tier = ?'; params.push(filters.tier); }
   if (filters?.segment) { sql += ' AND industry_segment = ?'; params.push(filters.segment); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('leads')}`; }
 
   const sortCol = ['score', 'created_at', 'last_touch_at', 'company'].includes(filters?.sort || '')
     ? filters!.sort
@@ -162,23 +170,25 @@ export function updateLeadStatus(id: string, status: string): void {
   db.prepare('UPDATE leads SET status = ?, last_touch_at = datetime(\'now\') WHERE id = ?').run(status, id);
 }
 
-export function getLeadFunnel(): FunnelStep[] {
+export function getLeadFunnel(filters?: { excludeSeed?: boolean }): FunnelStep[] {
   const db = getDb();
+  const sf = filters?.excludeSeed ? seedFilter('leads') : '';
   const steps = ['new', 'validated', 'contacted', 'replied', 'interested', 'booked', 'qualified'];
   return steps.map(name => {
-    const row = db.prepare('SELECT COUNT(*) as c FROM leads WHERE status = ?').get(name) as { c: number };
+    const row = db.prepare(`SELECT COUNT(*) as c FROM leads WHERE status = ? ${sf}`).get(name) as { c: number };
     return { name, value: row?.c ?? 0 };
   });
 }
 
 // ─── Sequences ─────────────────────────────────────────
-export function getSequences(filters?: { status?: string; lead_id?: string }): Sequence[] {
+export function getSequences(filters?: { status?: string; lead_id?: string; excludeSeed?: boolean }): Sequence[] {
   const db = getDb();
   let sql = 'SELECT * FROM sequences WHERE 1=1';
   const params: unknown[] = [];
 
   if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
   if (filters?.lead_id) { sql += ' AND lead_id = ?'; params.push(filters.lead_id); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('sequences')}`; }
 
   sql += ' ORDER BY created_at DESC';
   return db.prepare(sql).all(...params) as Sequence[];
@@ -190,9 +200,10 @@ export function updateSequenceStatus(id: string, status: string): void {
 }
 
 // ─── Suppression ───────────────────────────────────────
-export function getSuppression(): Suppression[] {
+export function getSuppression(filters?: { excludeSeed?: boolean }): Suppression[] {
   const db = getDb();
-  return db.prepare('SELECT * FROM suppression ORDER BY added_at DESC').all() as Suppression[];
+  const sf = filters?.excludeSeed ? seedFilter('suppression', 'email') : '';
+  return db.prepare(`SELECT * FROM suppression WHERE 1=1 ${sf} ORDER BY added_at DESC`).all() as Suppression[];
 }
 
 // ─── Engagement ────────────────────────────────────────
@@ -200,6 +211,7 @@ export function getEngagements(filters?: {
   platform?: string;
   action_type?: string;
   date?: string;
+  excludeSeed?: boolean;
 }): Engagement[] {
   const db = getDb();
   let sql = 'SELECT * FROM engagements WHERE 1=1';
@@ -208,6 +220,7 @@ export function getEngagements(filters?: {
   if (filters?.platform) { sql += ' AND platform = ?'; params.push(filters.platform); }
   if (filters?.action_type) { sql += ' AND action_type = ?'; params.push(filters.action_type); }
   if (filters?.date) { sql += ' AND date(created_at) = ?'; params.push(filters.date); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('engagements')}`; }
 
   sql += ' ORDER BY created_at DESC LIMIT 200';
   return db.prepare(sql).all(...params) as Engagement[];
@@ -218,6 +231,7 @@ export function getSignals(filters?: {
   type?: string;
   relevance?: string;
   date?: string;
+  excludeSeed?: boolean;
 }): Signal[] {
   const db = getDb();
   let sql = 'SELECT * FROM signals WHERE 1=1';
@@ -226,40 +240,45 @@ export function getSignals(filters?: {
   if (filters?.type) { sql += ' AND type = ?'; params.push(filters.type); }
   if (filters?.relevance) { sql += ' AND relevance = ?'; params.push(filters.relevance); }
   if (filters?.date) { sql += ' AND date = ?'; params.push(filters.date); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('signals')}`; }
 
   sql += ' ORDER BY created_at DESC LIMIT 200';
   return db.prepare(sql).all(...params) as Signal[];
 }
 
 // ─── Experiments ───────────────────────────────────────
-export function getExperiments(filters?: { status?: string }): Experiment[] {
+export function getExperiments(filters?: { status?: string; excludeSeed?: boolean }): Experiment[] {
   const db = getDb();
   let sql = 'SELECT * FROM experiments WHERE 1=1';
   const params: unknown[] = [];
 
   if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('experiments')}`; }
 
   sql += ' ORDER BY week DESC, id DESC';
   return db.prepare(sql).all(...params) as Experiment[];
 }
 
-export function getLearnings(): Learning[] {
+export function getLearnings(filters?: { excludeSeed?: boolean }): Learning[] {
   const db = getDb();
-  return db.prepare('SELECT * FROM learnings ORDER BY validated_week DESC, id DESC').all() as Learning[];
+  const sf = filters?.excludeSeed ? seedFilter('learnings') : '';
+  return db.prepare(`SELECT * FROM learnings WHERE 1=1 ${sf} ORDER BY validated_week DESC, id DESC`).all() as Learning[];
 }
 
 // ─── KPIs ──────────────────────────────────────────────
-export function getDailyMetrics(days: number = 90): DailyMetrics[] {
+export function getDailyMetrics(days: number = 90, filters?: { excludeSeed?: boolean }): DailyMetrics[] {
   const db = getDb();
+  const sf = filters?.excludeSeed ? seedFilter('daily_metrics', 'date') : '';
   return db.prepare(
-    `SELECT * FROM daily_metrics ORDER BY date DESC LIMIT ?`
+    `SELECT * FROM daily_metrics WHERE 1=1 ${sf} ORDER BY date DESC LIMIT ?`
   ).all(days) as DailyMetrics[];
 }
 
-export function getWeeklyKPIs(weeks: number = 12): WeeklyKPI[] {
+export function getWeeklyKPIs(weeks: number = 12, filters?: { excludeSeed?: boolean }): WeeklyKPI[] {
   const db = getDb();
+  const sf = filters?.excludeSeed ? seedFilter('daily_metrics', 'date') : '';
   const metrics = db.prepare(
-    `SELECT * FROM daily_metrics ORDER BY date DESC LIMIT ?`
+    `SELECT * FROM daily_metrics WHERE 1=1 ${sf} ORDER BY date DESC LIMIT ?`
   ).all(weeks * 7) as DailyMetrics[];
 
   // Group by ISO week
@@ -304,12 +323,14 @@ function getISOWeek(date: Date): number {
 export function getActivityLog(filters?: {
   action?: string;
   limit?: number;
+  excludeSeed?: boolean;
 }): ActivityEntry[] {
   const db = getDb();
   let sql = 'SELECT * FROM activity_log WHERE 1=1';
   const params: unknown[] = [];
 
   if (filters?.action) { sql += ' AND action = ?'; params.push(filters.action); }
+  if (filters?.excludeSeed) { sql += ` ${seedFilter('activity_log')}`; }
 
   sql += ' ORDER BY ts DESC LIMIT ?';
   params.push(filters?.limit ?? 100);

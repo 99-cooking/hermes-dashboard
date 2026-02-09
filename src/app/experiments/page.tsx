@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { FlaskConical, Lightbulb } from 'lucide-react';
+import { useDashboard } from '@/store';
 import type { Experiment, Learning } from '@/types';
 
 type Tab = 'current' | 'history' | 'learnings';
@@ -11,13 +12,15 @@ export default function ExperimentsPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [learnings, setLearnings] = useState<Learning[]>([]);
   const [tab, setTab] = useState<Tab>('current');
+  const { realOnly } = useDashboard();
 
   useEffect(() => {
-    fetch('/api/experiments').then(r => r.json()).then(data => {
+    const realParam = realOnly ? '?real=true' : '';
+    fetch(`/api/experiments${realParam}`).then(r => r.json()).then(data => {
       setExperiments(data.experiments || []);
       setLearnings(data.learnings || []);
     }).catch(() => {});
-  }, []);
+  }, [realOnly]);
 
   const running = experiments.filter(e => e.status === 'running' || e.status === 'proposed');
   const completed = experiments.filter(e => e.status === 'completed');
@@ -116,16 +119,16 @@ function ExperimentCard({ experiment: exp }: { experiment: Experiment }) {
       <div className="space-y-2">
         <div>
           <p className="text-xs text-muted-foreground">Hypothesis</p>
-          <p className="text-sm">{exp.hypothesis || '—'}</p>
+          <p className="text-sm">{exp.hypothesis || '\u2014'}</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-muted-foreground">Action</p>
-            <p className="text-sm">{exp.action || '—'}</p>
+            <p className="text-sm">{exp.action || '\u2014'}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Metric</p>
-            <p className="text-sm font-mono">{exp.metric || '—'}</p>
+            <p className="text-sm font-mono">{exp.metric || '\u2014'}</p>
           </div>
         </div>
         {exp.win_threshold && (

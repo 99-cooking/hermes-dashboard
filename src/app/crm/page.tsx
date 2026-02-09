@@ -7,6 +7,7 @@ import {
   Send, Eye, CircleDot, MessageSquare, CalendarCheck, CheckCircle, Ban,
 } from 'lucide-react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
+import { useDashboard } from '@/store';
 import { timeAgo } from '@/lib/utils';
 import type { Lead, Sequence, FunnelStep } from '@/types';
 
@@ -56,11 +57,13 @@ export default function CrmPage() {
   const [tierFilter, setTierFilter] = useState('');
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [sortField, setSortField] = useState<'score' | 'created_at'>('score');
+  const { realOnly } = useDashboard();
 
   const params = new URLSearchParams();
   if (stageFilter) params.set('status', stageFilter);
   if (tierFilter) params.set('tier', tierFilter);
   if (search) params.set('search', search);
+  if (realOnly) params.set('real', 'true');
 
   const { data } = useSmartPoll<CrmData>(
     () => fetch(`/api/crm?${params}`).then(r => r.json()),
@@ -288,11 +291,11 @@ function LeadDetailPanel({ id, onClose }: { id: string; onClose: () => void }) {
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-2">
         <div className="bg-muted/30 rounded-lg p-2 text-center">
-          <div className="text-sm font-semibold">{lead.score ?? '—'}</div>
+          <div className="text-sm font-semibold">{lead.score ?? '\u2014'}</div>
           <div className="text-[9px] text-muted-foreground uppercase">Score</div>
         </div>
         <div className="bg-muted/30 rounded-lg p-2 text-center">
-          <div className="text-sm font-semibold">{lead.tier ?? '—'}</div>
+          <div className="text-sm font-semibold">{lead.tier ?? '\u2014'}</div>
           <div className="text-[9px] text-muted-foreground uppercase">Tier</div>
         </div>
         <div className="bg-muted/30 rounded-lg p-2 text-center">
