@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { requireApiUser } from '@/lib/api-auth';
 import { getInstance, resolveOpenClawPaths } from '@/lib/instances';
@@ -132,7 +133,7 @@ function resolveWorkspaceToRootId(
     if (rel.startsWith('workspace-')) {
       // Follow symlink to get the real directory name.
       try {
-        const realResolved = require('node:fs').realpathSync(resolved);
+        const realResolved = realpathSync(resolved);
         const realRel = path.relative(resolvedHome, realResolved);
         if (realRel.startsWith('workspace-')) {
           return realRel;

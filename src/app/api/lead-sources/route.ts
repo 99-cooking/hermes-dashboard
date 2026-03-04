@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getHermesStateDir } from '@/lib/hermes-state';
+import { requireApiUser } from '@/lib/api-auth';
 
 const STATE_DIR = getHermesStateDir();
 const LEADS_PATH = path.join(STATE_DIR, 'leads.json');
@@ -20,7 +21,9 @@ function readJson<T>(filePath: string, fallback: T): T {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = requireApiUser(request);
+  if (auth) return auth;
   try {
     const leads = readJson<LeadStateRow[]>(LEADS_PATH, []);
     const counts: Record<string, number> = {};

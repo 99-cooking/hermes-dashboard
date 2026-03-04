@@ -1,22 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, Send, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { MessageCircle, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
 import { timeAgo } from '@/lib/utils';
 import { MessageBubble } from './message-bubble';
 import type { ChatMessage, ChatConversation } from '@/types';
 
 type AgentListItem = { id: string; name: string; emoji: string };
-
-const DEFAULT_AGENTS = [
-  { id: 'main', name: 'Main', emoji: '🎛️', color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-  { id: 'hermes', name: 'Hermes', emoji: '\u{1F3DB}\u{FE0F}', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { id: 'apollo', name: 'Apollo', emoji: '\u{1F3AF}', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  { id: 'athena', name: 'Athena', emoji: '\u{1F9E0}', color: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-  { id: 'metis', name: 'Metis', emoji: '\u{1F4CA}', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  { id: 'kb-manager', name: 'KB Manager', emoji: '📚', color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
-];
 type Role = 'admin' | 'editor' | 'viewer';
 
 function isGroupedWithPrevious(messages: ChatMessage[], index: number): boolean {
@@ -168,7 +159,7 @@ export function AgentChat() {
     { interval: 60_000, enabled: expanded },
   );
 
-  const agents = discoveredAgents && discoveredAgents.length > 0 ? discoveredAgents : DEFAULT_AGENTS;
+  const agents = discoveredAgents && discoveredAgents.length > 0 ? discoveredAgents : [];
 
   // Load messages when conversation changes
   const loadMessages = useCallback(async () => {
@@ -315,27 +306,24 @@ export function AgentChat() {
             {/* Quick start buttons */}
             <div className="p-2 border-b border-border/20 space-y-1">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground/60 px-2 mb-1">Chat with</div>
-              {agents.map(agent => (
-                <button
-                  key={agent.id}
-                  onClick={() => startConversation(agent.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                    activeConv === `agent_${agent.id}` ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
-                  }`}
-                >
-                  <span>{agent.emoji}</span>
-                  <span className="font-medium">{agent.name}</span>
-                </button>
-              ))}
-              <button
-                onClick={() => setActiveConv('hermes_apollo')}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                  activeConv === 'hermes_apollo' ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
-                }`}
-              >
-                <Users size={14} />
-                <span className="font-medium">Team Chat</span>
-              </button>
+              {agents.length === 0 ? (
+                <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
+                  No agents discovered
+                </div>
+              ) : (
+                agents.map(agent => (
+                  <button
+                    key={agent.id}
+                    onClick={() => startConversation(agent.id)}
+                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                      activeConv === `agent_${agent.id}` ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
+                    }`}
+                  >
+                    <span>{agent.emoji}</span>
+                    <span className="font-medium">{agent.name}</span>
+                  </button>
+                ))
+              )}
             </div>
 
             {/* Existing conversations */}

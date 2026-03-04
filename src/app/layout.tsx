@@ -19,7 +19,7 @@ const jetbrains = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Hermes Dashboard",
-  description: "Builderz Marketing Engine Control Center",
+  description: "Hermes marketing operations control center",
 };
 
 export const viewport = {

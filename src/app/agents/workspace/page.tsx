@@ -161,7 +161,6 @@ export default function AgentWorkspacePage() {
     setCwd('');
     setSelected(null);
     setContent('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rootId]);
 
   useEffect(() => {

@@ -16,6 +16,8 @@ EnvironmentFile=-/etc/hermes-dashboard/hermes-dashboard.env
 
 # Optional: path to a 1Password op:// env template file (non-secret).
 Environment=HERMES_OP_ENV_FILE=/etc/hermes-dashboard/hermes-dashboard.op.env
+# Optional: 1Password runtime mode (off|auto|required). Default is auto.
+Environment=HERMES_1PASSWORD_MODE=auto
 
 ExecStart=/opt/hermes-dashboard/scripts/start-standalone.sh
 Restart=on-failure
@@ -34,4 +36,3 @@ ReadWritePaths=/opt/hermes-dashboard /var/lib/hermes-dashboard
 
 [Install]
 WantedBy=multi-user.target
-

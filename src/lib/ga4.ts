@@ -1,4 +1,4 @@
-import { GoogleAuth } from "google-auth-library";
+import { GoogleAuth, type JWTInput } from "google-auth-library";
 
 export interface Ga4Summary {
   activeUsers: number;
@@ -56,6 +56,27 @@ export interface Ga4AnalyticsResult {
 
 const GA4_SCOPE = "https://www.googleapis.com/auth/analytics.readonly";
 
+interface Ga4MetricValue {
+  value?: string | number;
+}
+
+interface Ga4DimensionValue {
+  value?: string;
+}
+
+interface Ga4Row {
+  dimensionValues?: Ga4DimensionValue[];
+  metricValues?: Ga4MetricValue[];
+}
+
+interface Ga4ReportResponse {
+  rows?: Ga4Row[];
+}
+
+function isGa4SeriesPoint(value: Ga4SeriesPoint | null): value is Ga4SeriesPoint {
+  return value !== null;
+}
+
 function toIsoDateFromGa4Compact(compact: string): string {
   if (!/^\d{8}$/.test(compact)) return compact;
   return `${compact.slice(0, 4)}-${compact.slice(4, 6)}-${compact.slice(6, 8)}`;
@@ -69,11 +90,11 @@ function metricNumber(raw: unknown): number {
 function parseServiceAccountJson(env: {
   serviceAccountJson?: string | null;
   serviceAccountJsonB64?: string | null;
-}): Record<string, unknown> | null {
+}): JWTInput | null {
   const raw = (env.serviceAccountJson || "").trim();
   if (raw) {
     try {
-      return JSON.parse(raw) as Record<string, unknown>;
+      return JSON.parse(raw) as JWTInput;
     } catch {
       // fall through
     }
@@ -82,7 +103,7 @@ function parseServiceAccountJson(env: {
   if (b64) {
     try {
       const decoded = Buffer.from(b64, "base64").toString("utf-8");
-      return JSON.parse(decoded) as Record<string, unknown>;
+      return JSON.parse(decoded) as JWTInput;
     } catch {
       return null;
     }
@@ -123,7 +144,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
   }
 
   const auth = new GoogleAuth({
-    credentials: creds as any,
+    credentials: creds,
     scopes: [GA4_SCOPE],
   });
 
@@ -141,7 +162,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
   // 1) Aggregate summary
   let summary: Ga4Summary;
   try {
-    const aggregate = await ga4Fetch<any>(accessToken, base, {
+    const aggregate = await ga4Fetch<Ga4ReportResponse>(accessToken, base, {
       dateRanges,
       metrics: [
         { name: "activeUsers" },
@@ -152,7 +173,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
       ],
     });
 
-    const values = aggregate?.rows?.[0]?.metricValues?.map((m: any) => m?.value) ?? [];
+    const values = aggregate.rows?.[0]?.metricValues?.map((m) => m?.value) ?? [];
     summary = {
       activeUsers: metricNumber(values[0]),
       sessions: metricNumber(values[1]),
@@ -161,11 +182,11 @@ export async function fetchGa4WebsiteAnalytics(opts: {
       avgSessionDurationSeconds: metricNumber(values[4]),
     };
   } catch {
-    const aggregate = await ga4Fetch<any>(accessToken, base, {
+    const aggregate = await ga4Fetch<Ga4ReportResponse>(accessToken, base, {
       dateRanges,
       metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "screenPageViews" }],
     });
-    const values = aggregate?.rows?.[0]?.metricValues?.map((m: any) => m?.value) ?? [];
+    const values = aggregate.rows?.[0]?.metricValues?.map((m) => m?.value) ?? [];
     summary = {
       activeUsers: metricNumber(values[0]),
       sessions: metricNumber(values[1]),
@@ -174,19 +195,19 @@ export async function fetchGa4WebsiteAnalytics(opts: {
   }
 
   // 2) Daily timeseries
-  const report = await ga4Fetch<any>(accessToken, base, {
+  const report = await ga4Fetch<Ga4ReportResponse>(accessToken, base, {
     dateRanges,
     dimensions: [{ name: "date" }],
     metrics: [{ name: "activeUsers" }, { name: "sessions" }, { name: "screenPageViews" }],
     orderBys: [{ dimension: { dimensionName: "date" } }],
   });
 
-  const series: Ga4SeriesPoint[] = Array.isArray(report?.rows)
+  const series: Ga4SeriesPoint[] = Array.isArray(report.rows)
     ? report.rows
-        .map((r: any) => {
+        .map((r) => {
           const dateCompact = r?.dimensionValues?.[0]?.value;
           if (typeof dateCompact !== "string" || !dateCompact) return null;
-          const mv = r?.metricValues?.map((m: any) => m?.value) ?? [];
+          const mv = r?.metricValues?.map((m) => m?.value) ?? [];
           return {
             date: toIsoDateFromGa4Compact(dateCompact),
             activeUsers: metricNumber(mv[0]),
@@ -194,14 +215,14 @@ export async function fetchGa4WebsiteAnalytics(opts: {
             pageviews: metricNumber(mv[2]),
           };
         })
-        .filter(Boolean)
+        .filter(isGa4SeriesPoint)
     : [];
 
   // 3) Dimension breakdowns — parallel, non-blocking
   const [topPagesResult, trafficSourcesResult, deviceResult, newRetResult, countriesResult] =
     await Promise.allSettled([
       // Top pages
-      ga4Fetch<any>(accessToken, base, {
+      ga4Fetch<Ga4ReportResponse>(accessToken, base, {
         dateRanges,
         dimensions: [{ name: "pagePath" }, { name: "pageTitle" }],
         metrics: [{ name: "screenPageViews" }, { name: "activeUsers" }],
@@ -209,27 +230,27 @@ export async function fetchGa4WebsiteAnalytics(opts: {
         limit: 10,
       }),
       // Traffic sources
-      ga4Fetch<any>(accessToken, base, {
+      ga4Fetch<Ga4ReportResponse>(accessToken, base, {
         dateRanges,
         dimensions: [{ name: "sessionDefaultChannelGroup" }],
         metrics: [{ name: "sessions" }, { name: "activeUsers" }],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
       }),
       // Device split
-      ga4Fetch<any>(accessToken, base, {
+      ga4Fetch<Ga4ReportResponse>(accessToken, base, {
         dateRanges,
         dimensions: [{ name: "deviceCategory" }],
         metrics: [{ name: "activeUsers" }],
         orderBys: [{ metric: { metricName: "activeUsers" }, desc: true }],
       }),
       // New vs returning
-      ga4Fetch<any>(accessToken, base, {
+      ga4Fetch<Ga4ReportResponse>(accessToken, base, {
         dateRanges,
         dimensions: [{ name: "newVsReturning" }],
         metrics: [{ name: "activeUsers" }],
       }),
       // Countries
-      ga4Fetch<any>(accessToken, base, {
+      ga4Fetch<Ga4ReportResponse>(accessToken, base, {
         dateRanges,
         dimensions: [{ name: "country" }],
         metrics: [{ name: "activeUsers" }, { name: "sessions" }],
@@ -240,7 +261,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
 
   const topPages: Ga4TopPage[] | undefined =
     topPagesResult.status === "fulfilled" && Array.isArray(topPagesResult.value?.rows)
-      ? topPagesResult.value.rows.map((r: any) => ({
+      ? topPagesResult.value.rows.map((r) => ({
           pagePath: r?.dimensionValues?.[0]?.value ?? "",
           pageTitle: r?.dimensionValues?.[1]?.value ?? "(not set)",
           pageviews: metricNumber(r?.metricValues?.[0]?.value),
@@ -250,7 +271,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
 
   const trafficSources: Ga4TrafficSource[] | undefined =
     trafficSourcesResult.status === "fulfilled" && Array.isArray(trafficSourcesResult.value?.rows)
-      ? trafficSourcesResult.value.rows.map((r: any) => ({
+      ? trafficSourcesResult.value.rows.map((r) => ({
           channel: r?.dimensionValues?.[0]?.value ?? "(not set)",
           sessions: metricNumber(r?.metricValues?.[0]?.value),
           activeUsers: metricNumber(r?.metricValues?.[1]?.value),
@@ -259,7 +280,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
 
   const deviceSplit: Ga4DeviceSplit[] | undefined =
     deviceResult.status === "fulfilled" && Array.isArray(deviceResult.value?.rows)
-      ? deviceResult.value.rows.map((r: any) => ({
+      ? deviceResult.value.rows.map((r) => ({
           device: r?.dimensionValues?.[0]?.value ?? "unknown",
           activeUsers: metricNumber(r?.metricValues?.[0]?.value),
         }))
@@ -267,7 +288,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
 
   const newVsReturning: Ga4NewVsReturning[] | undefined =
     newRetResult.status === "fulfilled" && Array.isArray(newRetResult.value?.rows)
-      ? newRetResult.value.rows.map((r: any) => ({
+      ? newRetResult.value.rows.map((r) => ({
           segment: r?.dimensionValues?.[0]?.value ?? "unknown",
           activeUsers: metricNumber(r?.metricValues?.[0]?.value),
         }))
@@ -275,7 +296,7 @@ export async function fetchGa4WebsiteAnalytics(opts: {
 
   const countries: Ga4GeoEntry[] | undefined =
     countriesResult.status === "fulfilled" && Array.isArray(countriesResult.value?.rows)
-      ? countriesResult.value.rows.map((r: any) => ({
+      ? countriesResult.value.rows.map((r) => ({
           country: r?.dimensionValues?.[0]?.value ?? "(not set)",
           activeUsers: metricNumber(r?.metricValues?.[0]?.value),
           sessions: metricNumber(r?.metricValues?.[1]?.value),

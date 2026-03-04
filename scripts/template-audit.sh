@@ -18,10 +18,19 @@ if git ls-files -z | xargs -0 rg -n "BEGIN (RSA|OPENSSH) PRIVATE KEY" >/dev/null
 fi
 
 # 2) Block machine-specific coupling.
-BAD="(/home/leads|hetzner-jarv\\.tail|tail3087e9\\.ts\\.net)"
+BAD="(hetzner-jarv\\.tail|tail3087e9\\.ts\\.net)"
 if git ls-files -z | xargs -0 rg -n "$BAD" >/dev/null; then
   echo "Found machine-specific coupling in tracked files:" >&2
   git ls-files -z | xargs -0 rg -n "$BAD" || true
+  exit 1
+fi
+
+# 2b) Block org/person-specific template residue.
+BAD_TEMPLATE_RESIDUE="(builderz|leads-prod|@builderz\\.dev)"
+TRACKED_NO_SELF="$(git ls-files | rg -v '^scripts/template-audit\.sh$' || true)"
+if [ -n "$TRACKED_NO_SELF" ] && printf '%s\n' "$TRACKED_NO_SELF" | xargs rg -n -i "$BAD_TEMPLATE_RESIDUE" >/dev/null; then
+  echo "Found org-specific residue in tracked files:" >&2
+  printf '%s\n' "$TRACKED_NO_SELF" | xargs rg -n -i "$BAD_TEMPLATE_RESIDUE" || true
   exit 1
 fi
 

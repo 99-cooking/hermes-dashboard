@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { seedFilter } from '@/lib/queries';
+import { requireApiUser } from '@/lib/api-auth';
 
 export async function GET(req: NextRequest) {
+  const auth = requireApiUser(req as unknown as Request);
+  if (auth) return auth;
   try {
     const real = req.nextUrl.searchParams.get('real') === 'true';
     const sfContent = real ? ` ${seedFilter('content_posts')}` : '';

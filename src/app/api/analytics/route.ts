@@ -7,6 +7,13 @@ import { fetchGa4WebsiteAnalytics } from "@/lib/ga4";
 import { fetchXAccountAnalytics } from "@/lib/x-api";
 import { fetchLinkedInOrgAnalytics } from "@/lib/linkedin";
 
+type ProviderState = {
+  provider: string;
+  configured: boolean;
+  error?: string;
+  [key: string]: unknown;
+};
+
 export async function GET(req: NextRequest) {
   const auth = requireApiUser(req as Request);
   if (auth) return auth;
@@ -33,7 +40,7 @@ export async function GET(req: NextRequest) {
   const plausibleApiKey = process.env.PLAUSIBLE_API_KEY;
   const plausibleBaseUrl = process.env.PLAUSIBLE_BASE_URL || "https://plausible.io";
 
-  let website: any = { provider: "none", configured: false };
+  let website: ProviderState = { provider: "none", configured: false };
 
   if (ga4PropertyId && (ga4ServiceAccountJson || ga4ServiceAccountJsonB64)) {
     try {
@@ -98,7 +105,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Social native connectors.
-  let x: any = { provider: "x", configured: false };
+  let x: ProviderState = { provider: "x", configured: false };
   const xBearer = process.env.X_BEARER_TOKEN || process.env.X_API_BEARER_TOKEN || null;
   const xUsername = process.env.X_USERNAME || null;
   if (xBearer && xUsername) {
@@ -114,7 +121,7 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  let linkedin: any = { provider: "linkedin", configured: false };
+  let linkedin: ProviderState = { provider: "linkedin", configured: false };
   const liToken = process.env.LINKEDIN_ACCESS_TOKEN || null;
   const liOrgUrn = process.env.LINKEDIN_ORGANIZATION_URN || null;
   const liVersion = process.env.LINKEDIN_VERSION || null;

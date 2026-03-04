@@ -4,6 +4,22 @@ import { NextResponse } from 'next/server';
 const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const STATE_COOKIE = 'hermes-google-state';
 
+function shouldUseSecureCookies(request: Request): boolean {
+  const forced = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase();
+  if (forced === 'true' || forced === '1' || forced === 'yes') return true;
+  if (forced === 'false' || forced === '0' || forced === 'no') return false;
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedProto) {
+    return forwardedProto.split(',')[0].trim().toLowerCase() === 'https';
+  }
+
+  try {
+    return new URL(request.url).protocol === 'https:';
+  } catch {
+    return process.env.NODE_ENV === 'production';
+  }
+}
+
 function requireGoogleEnv() {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   const redirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
@@ -33,7 +49,7 @@ export async function GET(request: Request) {
     response.cookies.set(STATE_COOKIE, `${state}:${encodeURIComponent(from)}`, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: shouldUseSecureCookies(request),
       maxAge: 10 * 60,
       path: '/',
     });
@@ -45,4 +61,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getDb } from '@/lib/db';
 import { getHermesStateDir } from '@/lib/hermes-state';
+import { requireApiEditor, requireApiUser } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +102,8 @@ function rowToQueueItem(row: Record<string, unknown>): QueueItem {
 }
 
 export async function GET(req: NextRequest) {
+  const auth = requireApiUser(req as unknown as Request);
+  if (auth) return auth;
   const id = req.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
@@ -120,6 +123,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const auth = requireApiEditor(req as unknown as Request);
+  if (auth) return auth;
   try {
     const body = (await req.json()) as {
       id?: string;
@@ -207,4 +212,3 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
-

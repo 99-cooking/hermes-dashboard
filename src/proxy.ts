@@ -3,13 +3,31 @@ import type { NextRequest } from 'next/server';
 
 const SESSION_COOKIE = 'hermes-session';
 
+function isHostAllowedByLock(hostName: string): boolean {
+  const mode = (process.env.HERMES_HOST_LOCK || 'local').trim().toLowerCase();
+  if (mode === 'off' || mode === 'disabled' || mode === 'false' || mode === '0') {
+    return true;
+  }
+
+  if (mode === 'local') {
+    const isLocalhost = hostName === 'localhost' || hostName === '127.0.0.1';
+    const isTailscale = hostName.startsWith('100.') || hostName.endsWith('.ts.net');
+    return isLocalhost || isTailscale;
+  }
+
+  // allowlist mode (comma-separated hostnames)
+  const allowed = mode
+    .split(',')
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+  if (allowed.length === 0) return false;
+  return allowed.includes(hostName.toLowerCase());
+}
+
 export function proxy(request: NextRequest) {
   const host = request.headers.get('host') || '';
   const hostName = host.split(':')[0];
-  const isLocalhost = hostName === 'localhost' || hostName === '127.0.0.1';
-  const isTailscale = hostName.startsWith('100.') || hostName.endsWith('.ts.net');
-
-  if (!isLocalhost && !isTailscale) {
+  if (!isHostAllowedByLock(hostName)) {
     return new NextResponse('Forbidden', { status: 403 });
   }
 

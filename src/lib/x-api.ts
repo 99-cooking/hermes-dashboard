@@ -18,6 +18,33 @@ export interface XSeriesPoint {
   quotes: number;
 }
 
+interface XUserLookupResponse {
+  data?: {
+    id?: string;
+    public_metrics?: {
+      followers_count?: number | string;
+      following_count?: number | string;
+    };
+  };
+}
+
+interface XTweet {
+  created_at?: string;
+  public_metrics?: {
+    like_count?: number | string;
+    reply_count?: number | string;
+    retweet_count?: number | string;
+    quote_count?: number | string;
+  };
+}
+
+interface XTweetsResponse {
+  data?: XTweet[];
+  meta?: {
+    next_token?: string;
+  };
+}
+
 function isoDay(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -44,7 +71,7 @@ export async function fetchXAccountAnalytics(opts: {
   username: string;
   days: number;
 }): Promise<{ summary: XSummary; series: XSeriesPoint[] }> {
-  const user = await xGet<any>(
+  const user = await xGet<XUserLookupResponse>(
     opts.bearerToken,
     `https://api.x.com/2/users/by/username/${encodeURIComponent(
       opts.username
@@ -79,7 +106,7 @@ export async function fetchXAccountAnalytics(opts: {
     });
     if (nextToken) params.set("pagination_token", nextToken);
 
-    const tweets = await xGet<any>(
+    const tweets = await xGet<XTweetsResponse>(
       opts.bearerToken,
       `https://api.x.com/2/users/${encodeURIComponent(userId)}/tweets?${params.toString()}`
     );
@@ -127,4 +154,3 @@ export async function fetchXAccountAnalytics(opts: {
 
   return { summary, series };
 }
-

@@ -35,15 +35,27 @@ interface AutomationsData {
   };
 }
 
-const AGENT_COLORS: Record<string, string> = {
-  hermes: 'border-l-primary',
-  apollo: 'border-l-success',
-};
+interface AgentStyleToken {
+  borderClass: string;
+  dotClass: string;
+  barClass: string;
+  bgClass: string;
+}
 
-const AGENT_BG: Record<string, string> = {
-  hermes: 'bg-primary/10',
-  apollo: 'bg-success/10',
-};
+const AGENT_STYLE_TOKENS: AgentStyleToken[] = [
+  { borderClass: 'border-l-primary', dotClass: 'bg-primary', barClass: 'bg-primary/60', bgClass: 'bg-primary/10' },
+  { borderClass: 'border-l-success', dotClass: 'bg-success', barClass: 'bg-success/60', bgClass: 'bg-success/10' },
+  { borderClass: 'border-l-warning', dotClass: 'bg-warning', barClass: 'bg-warning/60', bgClass: 'bg-warning/10' },
+  { borderClass: 'border-l-destructive', dotClass: 'bg-destructive', barClass: 'bg-destructive/60', bgClass: 'bg-destructive/10' },
+];
+
+function toTitleFromId(agent: string): string {
+  if (!agent) return 'Unknown';
+  return agent
+    .replace(/[_-]+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
 
 type Role = 'admin' | 'editor' | 'viewer';
 
@@ -77,6 +89,22 @@ export default function AutomationsPage() {
 
   const { approvals, skill_executions, schedule, hourly_activity, summary } = data;
   const canEdit = role === 'admin' || role === 'editor';
+  const knownAgents = new Map(
+    schedule
+      .filter((job) => job.agent)
+      .map((job) => [job.agent, { name: job.agentName, emoji: job.agentEmoji }] as const),
+  );
+  const orderedAgentIds = Array.from(
+    new Set([
+      ...schedule.map((job) => job.agent).filter(Boolean),
+      ...skill_executions.map((execution) => execution.agent).filter(Boolean),
+      ...approvals.map((approval) => approval.agent).filter(Boolean),
+    ]),
+  );
+  const agentStyles = Object.fromEntries(
+    orderedAgentIds.map((agent, index) => [agent, AGENT_STYLE_TOKENS[index % AGENT_STYLE_TOKENS.length]]),
+  ) as Record<string, AgentStyleToken>;
+  const fallbackStyle = AGENT_STYLE_TOKENS[0];
 
   return (
     <div className="space-y-6 animate-in">
@@ -126,7 +154,7 @@ export default function AutomationsPage() {
               {schedule.map((job, i) => (
                 <div
                   key={job.id}
-                  className={`flex items-center gap-3 py-2.5 px-3 border-l-2 ${AGENT_COLORS[job.agent]} ${
+                  className={`flex items-center gap-3 py-2.5 px-3 border-l-2 ${(agentStyles[job.agent] ?? fallbackStyle).borderClass} ${
                     i < schedule.length - 1 ? 'border-b border-border/30' : ''
                   }`}
                 >
@@ -147,8 +175,18 @@ export default function AutomationsPage() {
               ))}
             </div>
             <div className="flex items-center gap-4 mt-3 pt-3 border-t border-border/30 text-[10px] text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-primary rounded" /> Hermes</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-success rounded" /> Apollo</span>
+              {orderedAgentIds.map((agent) => {
+                const style = agentStyles[agent] ?? fallbackStyle;
+                const meta = knownAgents.get(agent);
+                const label = meta?.name || toTitleFromId(agent);
+                return (
+                  <span key={agent} className="flex items-center gap-1">
+                    <span className={`w-3 h-0.5 rounded ${style.dotClass}`} />
+                    {meta?.emoji && <span>{meta.emoji}</span>}
+                    {label}
+                  </span>
+                );
+              })}
               <span>Weekdays only (Mon-Fri)</span>
             </div>
           </div>
@@ -177,7 +215,13 @@ export default function AutomationsPage() {
             ) : (
               <div className="space-y-2 max-h-80 overflow-y-auto">
                 {approvals.map(item => (
-                  <ApprovalCardComponent key={item.id} item={item} onAction={refetch} canEdit={canEdit} />
+                  <ApprovalCardComponent
+                    key={item.id}
+                    item={item}
+                    onAction={refetch}
+                    canEdit={canEdit}
+                    bgClass={(agentStyles[item.agent] ?? fallbackStyle).bgClass}
+                  />
                 ))}
               </div>
             )}
@@ -201,11 +245,12 @@ export default function AutomationsPage() {
                 {skill_executions.map(exec => {
                   const maxCount = Math.max(...skill_executions.map(e => e.count), 1);
                   const width = (exec.count / maxCount) * 100;
+                  const style = agentStyles[exec.agent] ?? fallbackStyle;
                   return (
                     <div key={`${exec.agent}-${exec.skill}`} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
-                          <span className={`w-1.5 h-1.5 rounded-full ${exec.agent === 'hermes' ? 'bg-primary' : 'bg-success'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${style.dotClass}`} />
                           <span className="font-medium">{exec.skill}</span>
                         </div>
                         <div className="flex items-center gap-3 text-muted-foreground">
@@ -215,7 +260,7 @@ export default function AutomationsPage() {
                       </div>
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={`h-full rounded-full transition-all ${exec.agent === 'hermes' ? 'bg-primary/60' : 'bg-success/60'}`}
+                          className={`h-full rounded-full transition-all ${style.barClass}`}
                           style={{ width: `${width}%` }}
                         />
                       </div>
@@ -278,7 +323,17 @@ export default function AutomationsPage() {
   );
 }
 
-function ApprovalCardComponent({ item, onAction, canEdit }: { item: ApprovalItem; onAction: () => void; canEdit: boolean }) {
+function ApprovalCardComponent({
+  item,
+  onAction,
+  canEdit,
+  bgClass,
+}: {
+  item: ApprovalItem;
+  onAction: () => void;
+  canEdit: boolean;
+  bgClass: string;
+}) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null);
 
   async function handleAction(action: 'approve' | 'reject') {
@@ -294,7 +349,7 @@ function ApprovalCardComponent({ item, onAction, canEdit }: { item: ApprovalItem
   }
 
   return (
-    <div className={`p-3 rounded-lg ${AGENT_BG[item.agent]} flex items-start gap-3`}>
+    <div className={`p-3 rounded-lg ${bgClass} flex items-start gap-3`}>
       <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center shrink-0 mt-0.5">
         {item.type === 'content' ? <PenLine size={14} /> : <Mail size={14} />}
       </div>

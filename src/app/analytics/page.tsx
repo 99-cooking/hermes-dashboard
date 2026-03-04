@@ -8,9 +8,6 @@ import {
   MousePointerClick,
   Users,
   Send,
-  MessageCircle,
-  Repeat2,
-  Quote,
   Linkedin,
   X,
   Monitor,
@@ -373,6 +370,10 @@ function WebsitePanel({ website }: { website: WebsitePayload }) {
     if (website.provider === "plausible") return Array.isArray(website.series) ? website.series : [];
     return [];
   }, [website]);
+  const ga4Series: Ga4SeriesPoint[] =
+    website.provider === "ga4" && Array.isArray(website.series) ? website.series : [];
+  const plausibleSeries: PlausibleSeriesPoint[] =
+    website.provider === "plausible" && Array.isArray(website.series) ? website.series : [];
 
   return (
     <div className="panel">
@@ -394,14 +395,14 @@ function WebsitePanel({ website }: { website: WebsitePayload }) {
                 label="Active users"
                 value={website.summary.activeUsers}
                 icon={Users}
-                sparkline={series.map((p) => ({ value: (p as any).activeUsers }))}
+                sparkline={ga4Series.map((p) => ({ value: p.activeUsers }))}
                 color="var(--primary)"
               />
               <StatCard
                 label="Pageviews"
                 value={website.summary.pageviews}
                 icon={Activity}
-                sparkline={series.map((p) => ({ value: (p as any).pageviews }))}
+                sparkline={ga4Series.map((p) => ({ value: p.pageviews }))}
                 color="var(--info)"
               />
             </div>
@@ -483,14 +484,14 @@ function WebsitePanel({ website }: { website: WebsitePayload }) {
                 label="Visitors"
                 value={website.summary.visitors}
                 icon={Users}
-                sparkline={series.map((p) => ({ value: (p as any).visitors }))}
+                sparkline={plausibleSeries.map((p) => ({ value: p.visitors }))}
                 color="var(--primary)"
               />
               <StatCard
                 label="Pageviews"
                 value={website.summary.pageviews}
                 icon={Activity}
-                sparkline={series.map((p) => ({ value: (p as any).pageviews }))}
+                sparkline={plausibleSeries.map((p) => ({ value: p.pageviews }))}
                 color="var(--info)"
               />
             </div>

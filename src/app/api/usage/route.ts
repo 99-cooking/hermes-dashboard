@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { requireApiUser } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const auth = requireApiUser(req as unknown as Request);
+  if (auth) return auth;
   const db = getDb();
   const daysParam = Number(req.nextUrl.searchParams.get('days') || 14);
   const days = Number.isFinite(daysParam) ? Math.max(1, Math.min(90, Math.floor(daysParam))) : 14;

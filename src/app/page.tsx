@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import {
   PenLine, MessageCircle, Mail, Users, AlertTriangle, Info, AlertCircle,
-  Bell, ChevronRight, Clock, ThumbsUp, ThumbsDown, Loader2, Zap,
-  CheckCircle, Bot, Search, Send,
+  Bell, ThumbsUp, ThumbsDown, Loader2, Zap,
+  CheckCircle, Search, Send,
 } from 'lucide-react';
 import Link from 'next/link';
 import { StatCard } from '@/components/ui/stat-card';

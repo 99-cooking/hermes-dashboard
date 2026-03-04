@@ -18,6 +18,30 @@ export interface LinkedInSeriesPoint {
   shares: number;
 }
 
+interface LinkedInShareElement {
+  timeRange?: { start?: number };
+  totalShareStatistics?: Record<string, unknown>;
+  shareStatistics?: Record<string, unknown>;
+  total?: Record<string, unknown>;
+}
+
+interface LinkedInFollowerStatsResponse {
+  elements?: Array<Record<string, unknown>>;
+}
+
+interface LinkedInShareStatsResponse {
+  totalShareStatistics?: Record<string, unknown>;
+  elements?: LinkedInShareElement[];
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {};
+}
+
+function isLinkedInSeriesPoint(value: LinkedInSeriesPoint | null): value is LinkedInSeriesPoint {
+  return value !== null;
+}
+
 function num(v: unknown): number {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
   return Number.isFinite(n) ? n : 0;
@@ -49,7 +73,7 @@ export async function fetchLinkedInOrgAnalytics(opts: {
 }): Promise<{ summary: LinkedInSummary; series: LinkedInSeriesPoint[] }> {
   let followers: number | undefined;
   try {
-    const followerStats = await liGet<any>({
+    const followerStats = await liGet<LinkedInFollowerStatsResponse>({
       accessToken: opts.accessToken,
       version: opts.version,
       url:
@@ -61,10 +85,11 @@ export async function fetchLinkedInOrgAnalytics(opts: {
     });
 
     const el = Array.isArray(followerStats?.elements) ? followerStats.elements[0] : null;
+    const followerCounts = asRecord(el?.followerCounts);
     const fc =
-      el?.followerCounts?.organicFollowerCount ??
-      el?.followerCounts?.paidFollowerCount ??
-      el?.followerCounts?.totalFollowerCount ??
+      followerCounts.organicFollowerCount ??
+      followerCounts.paidFollowerCount ??
+      followerCounts.totalFollowerCount ??
       el?.followerCount;
     const parsed = num(fc);
     if (parsed > 0) followers = parsed;
@@ -72,7 +97,7 @@ export async function fetchLinkedInOrgAnalytics(opts: {
     // ignore
   }
 
-  const shareStats = await liGet<any>({
+  const shareStats = await liGet<LinkedInShareStatsResponse>({
     accessToken: opts.accessToken,
     version: opts.version,
     url:
@@ -93,7 +118,7 @@ export async function fetchLinkedInOrgAnalytics(opts: {
 
   const series: LinkedInSeriesPoint[] = Array.isArray(shareStats?.elements)
     ? shareStats.elements
-        .map((e: any) => {
+        .map((e) => {
           const startMs = e?.timeRange?.start as number | undefined;
           const date =
             typeof startMs === "number" && Number.isFinite(startMs)
@@ -110,7 +135,7 @@ export async function fetchLinkedInOrgAnalytics(opts: {
             shares: num(stats?.shareCount ?? stats?.shares),
           };
         })
-        .filter(Boolean)
+        .filter(isLinkedInSeriesPoint)
     : [];
 
   return {
@@ -127,4 +152,3 @@ export async function fetchLinkedInOrgAnalytics(opts: {
     series,
   };
 }
-

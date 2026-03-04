@@ -61,9 +61,13 @@ If you deploy with 1Password, the standalone entrypoint supports resolving secre
 - Non-secret config: /etc/hermes-dashboard/hermes-dashboard.env
 - op:// references (non-secret template): /etc/hermes-dashboard/hermes-dashboard.op.env
 - Required secret for op: OP_SERVICE_ACCOUNT_TOKEN (set via systemd EnvironmentFile or another secret store)
+- Optional mode flag:
+  - `HERMES_1PASSWORD_MODE=off` (never use op)
+  - `HERMES_1PASSWORD_MODE=auto` (default; try op then fallback to env)
+  - `HERMES_1PASSWORD_MODE=required` (fail startup if op cannot run)
 
 A template for the op env file lives at: ops/1password/hermes-dashboard.op.env.example
 
 Notes:
 - Analytics keys like PLAUSIBLE_SITE_ID / PLAUSIBLE_API_KEY should live in 1Password and be referenced from the op env template.
-- scripts/start-standalone.sh will use op run automatically when op + OP_SERVICE_ACCOUNT_TOKEN are present.
+- scripts/start-standalone.sh uses op run according to `HERMES_1PASSWORD_MODE` and `HERMES_OP_ENV_FILE`.

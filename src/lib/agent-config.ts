@@ -209,7 +209,7 @@ function discoverAgentIdsFromFs(agentsDir: string): string[] {
 }
 
 function loadStaticMeta(): Record<string, AgentStaticMeta> {
-  const useDefault = String(process.env.HERMES_USE_DEFAULT_AGENT_META ?? 'true')
+  const useDefault = String(process.env.HERMES_USE_DEFAULT_AGENT_META ?? 'false')
     .trim()
     .toLowerCase() !== 'false';
 
@@ -328,4 +328,3 @@ export const ACTION_TO_AGENT: Record<string, { agent: string; skill: string }> =
   triage: { agent: 'apollo', skill: 'reply-triage' },
   alert: { agent: 'hermes', skill: 'reporting' },
 };
-

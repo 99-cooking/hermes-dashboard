@@ -36,13 +36,10 @@ interface HistoryData {
   agents: string[];
 }
 
-const DEFAULT_FROM = 'hermes';
-const DEFAULT_TO = 'apollo';
-
 export function MissionControlChat() {
   const [mode, setMode] = useState<Mode>('orchestrator');
-  const [fromAgent, setFromAgent] = useState(DEFAULT_FROM);
-  const [toAgent, setToAgent] = useState(DEFAULT_TO);
+  const [fromAgent, setFromAgent] = useState('');
+  const [toAgent, setToAgent] = useState('');
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -50,7 +47,7 @@ export function MissionControlChat() {
   const [messages, setMessages] = useState<MissionMessage[]>([]);
   const [conversations, setConversations] = useState<MissionConversation[]>([]);
   const [conversationId, setConversationId] = useState<string>('');
-  const [agents, setAgents] = useState<string[]>([DEFAULT_FROM, DEFAULT_TO]);
+  const [agents, setAgents] = useState<string[]>([]);
   const [copyingId, setCopyingId] = useState<number | null>(null);
 
   const loadHistory = useCallback(async () => {
@@ -66,6 +63,12 @@ export function MissionControlChat() {
       setConversations(nextConversations);
       if (Array.isArray(data.agents) && data.agents.length > 0) {
         setAgents(data.agents);
+        setFromAgent((prev) => (prev && data.agents.includes(prev) ? prev : data.agents[0]));
+        setToAgent((prev) => {
+          if (prev && data.agents.includes(prev) && prev !== data.agents[0]) return prev;
+          const fallback = data.agents.find((a) => a !== data.agents[0]);
+          return fallback ?? data.agents[0];
+        });
       }
       if (nextConversations.length > 0) {
         const stillExists = nextConversations.some((c) => c.conversation_id === conversationId);
@@ -96,6 +99,12 @@ export function MissionControlChat() {
       setMessages(Array.isArray(data.messages) ? data.messages : []);
       if (Array.isArray(data.agents) && data.agents.length > 0) {
         setAgents(data.agents);
+        setFromAgent((prev) => (prev && data.agents.includes(prev) ? prev : data.agents[0]));
+        setToAgent((prev) => {
+          if (prev && data.agents.includes(prev) && prev !== data.agents[0]) return prev;
+          const fallback = data.agents.find((a) => a !== data.agents[0]);
+          return fallback ?? data.agents[0];
+        });
       }
     } finally {
       setLoading(false);
@@ -134,6 +143,7 @@ export function MissionControlChat() {
   async function sendMessage() {
     const content = input.trim();
     if (!content || sending) return;
+    if (mode === 'agent_bridge' && (!fromAgent || !toAgent || fromAgent === toAgent)) return;
     setSending(true);
     try {
       const payload: Record<string, string> = { mode, content };
@@ -200,6 +210,7 @@ export function MissionControlChat() {
               value={fromAgent}
               onChange={(e) => setFromAgent(e.target.value)}
               className="px-2 py-1 rounded-md border border-border bg-background text-xs"
+              disabled={agents.length === 0}
             >
               {agents.map((agent) => (
                 <option key={`from-${agent}`} value={agent}>{agent}</option>
@@ -210,6 +221,7 @@ export function MissionControlChat() {
               value={toAgent}
               onChange={(e) => setToAgent(e.target.value)}
               className="px-2 py-1 rounded-md border border-border bg-background text-xs"
+              disabled={agents.length === 0}
             >
               {agents.map((agent) => (
                 <option key={`to-${agent}`} value={agent}>{agent}</option>
@@ -286,7 +298,7 @@ export function MissionControlChat() {
         />
         <button
           onClick={sendMessage}
-          disabled={!input.trim() || sending}
+          disabled={!input.trim() || sending || (mode === 'agent_bridge' && (!fromAgent || !toAgent || fromAgent === toAgent))}
           className="btn btn-primary btn-sm flex items-center gap-1 disabled:opacity-50"
         >
           {sending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}

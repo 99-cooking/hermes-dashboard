@@ -134,7 +134,7 @@ const posts = [
   { platform: 'x', format: 'short_post', pillar: 3, text: 'Stop sending "just checking in" follow-ups. Here\'s what to send instead based on 10k data points...', status: 'published', daysBack: 2, imp: 3100, likes: 65, replies: 18, reposts: 22, saves: 11 },
   { platform: 'x', format: 'short_post', pillar: 1, text: 'Your outbound is broken because you\'re optimizing for volume instead of relevance. The math doesn\'t work anymore.', status: 'published', daysBack: 3, imp: 2400, likes: 42, replies: 9, reposts: 14, saves: 7 },
   { platform: 'x', format: 'thread', pillar: 4, text: 'We just shipped experiment tracking in our marketing engine. Why we think A/B testing your outreach is non-negotiable 🧵', status: 'published', daysBack: 4, imp: 5600, likes: 124, replies: 38, reposts: 52, saves: 28 },
-  { platform: 'x', format: 'short_post', pillar: 5, text: 'Builderz update: Our AI agent now handles X engagement, content creation, and cold outreach autonomously. Building in public.', status: 'published', daysBack: 5, imp: 6800, likes: 156, replies: 44, reposts: 63, saves: 32 },
+  { platform: 'x', format: 'short_post', pillar: 5, text: 'Hermes update: Our AI agent now handles X engagement, content creation, and cold outreach autonomously. Building in public.', status: 'published', daysBack: 5, imp: 6800, likes: 156, replies: 44, reposts: 63, saves: 32 },
   { platform: 'x', format: 'short_post', pillar: 2, text: 'The best cold emails don\'t sell. They start conversations. Here\'s the framework we use for Tier A prospects...', status: 'published', daysBack: 6, imp: 3800, likes: 78, replies: 21, reposts: 28, saves: 18 },
   { platform: 'x', format: 'short_post', pillar: 3, text: 'Automated follow-up sequences that feel human? Possible, but only if you personalize at the signal level.', status: 'published', daysBack: 7, imp: 2100, likes: 35, replies: 8, reposts: 12, saves: 5 },
   { platform: 'linkedin', format: 'text_post', pillar: 1, text: 'We replaced our entire outbound stack with an AI agent. 3 weeks in, here are the numbers...', status: 'published', daysBack: 3, imp: 1200, likes: 34, replies: 12, reposts: 8, saves: 6 },
@@ -206,7 +206,7 @@ const insertLeads = db.transaction(() => {
   for (let i = 0; i < leadsData.length; i++) {
     const l = leadsData[i];
     const id = `lead-${uid()}`;
-    const emailDomain = l.co.toLowerCase().replace(/[^a-z0-9]/g, '') + '.io';
+    const emailDomain = 'example.test';
     leadInsert.run(
       id, l.fn, l.ln, l.title, l.co, l.sz, l.seg, l.src,
       `${l.fn.toLowerCase()}.${l.ln.toLowerCase()}@${emailDomain}`,
@@ -270,10 +270,10 @@ console.log(`✓ Inserted ${seqCount.c} sequence steps`);
 const supInsert = db.prepare('INSERT INTO suppression (email, type, added_at) VALUES (?, ?, ?)');
 const suppressions = [
   { email: 'spam-trap@example.com', type: 'domain_block' },
-  { email: 'ava.martinez@neuralstack.io', type: 'opt_out' },
-  { email: 'liam.anderson@tinyops.io', type: 'bounce' },
-  { email: 'noreply@competitor.com', type: 'domain_block' },
-  { email: 'old-contact@defunct-startup.com', type: 'bounce' },
+  { email: 'optout@example.test', type: 'opt_out' },
+  { email: 'bounce@example.test', type: 'bounce' },
+  { email: 'blocklist@example.test', type: 'domain_block' },
+  { email: 'old-contact@example.test', type: 'bounce' },
 ];
 const insertSup = db.transaction(() => {
   for (const s of suppressions) supInsert.run(s.email, s.type, daysAgo(Math.floor(Math.random() * 14)));
@@ -349,7 +349,7 @@ const signalData = [
   { type: 'launch', user: '@graphbase_io', summary: 'Launched new GraphQL API product, need to drive adoption', rel: 'high', action: 'Added to pipeline, preparing personalized sequence', days: 2 },
   { type: 'competitor', user: '@ai_frontier', summary: 'Comparing AI outbound tools — mentioned Apollo, Instantly, and "looking for better options"', rel: 'high', action: 'Replied with our differentiation (agent vs tool)', days: 0 },
   { type: 'competitor', user: '@growtheng', summary: 'Thread: "Why I stopped using Instantly for cold email" — reliability issues', rel: 'medium', action: 'Bookmarked for content inspiration', days: 3 },
-  { type: 'brand_mention', user: '@indiemaker42', summary: 'Mentioned Builderz in a thread about AI-native marketing tools', rel: 'high', action: 'Thanked and engaged in thread', days: 1 },
+  { type: 'brand_mention', user: '@indiemaker42', summary: 'Mentioned Hermes in a thread about AI-native marketing tools', rel: 'high', action: 'Thanked and engaged in thread', days: 1 },
   { type: 'brand_mention', user: '@scalingops', summary: 'Quoted our thread on cold email frameworks — "best breakdown I\'ve seen"', rel: 'high', action: 'Replied with thanks + follow', days: 3 },
   { type: 'opportunity', user: '@devtools_daily', summary: 'Newsletter asking for guest contributors on AI in GTM topic', rel: 'high', action: 'Submitted pitch for guest post', days: 2 },
   { type: 'opportunity', user: '@mlops_weekly', summary: 'Hosting Twitter Space on "AI agents in production" — open for speakers', rel: 'medium', action: 'Applied to speak', days: 4 },
@@ -548,7 +548,7 @@ const activityEntries = [
   // 4+ days ago (sparser)
   { days: 4, h: 10, action: 'post', detail: 'Published experiment tracking thread (6 tweets)', result: '5,600 impressions, 124 likes' },
   { days: 4, h: 10.5, action: 'send', detail: 'Outreach: 3 emails', result: '1 open' },
-  { days: 5, h: 10, action: 'post', detail: 'Published Builderz update post', result: '6,800 impressions — highest single post' },
+  { days: 5, h: 10, action: 'post', detail: 'Published Hermes update post', result: '6,800 impressions — highest single post' },
   { days: 5, h: 11, action: 'discover', detail: 'New experiment proposed: threads vs single posts', result: 'Experiment #3 status: running' },
   { days: 6, h: 10, action: 'post', detail: 'Published: "Best cold emails don\'t sell" framework post', result: '3,800 impressions' },
   { days: 7, h: 10, action: 'post', detail: 'Published: "Automated follow-up sequences" + LinkedIn update', result: '2,100 + 890 impressions' },

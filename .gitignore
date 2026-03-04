@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/.pnpm-store
 /.pnp
 .pnp.*
 .yarn/*
@@ -53,3 +54,6 @@ hermes-seed-fix.bundle
 
 # runtime state
 /state/
+/.tmp/
+/test-results/
+/playwright-report/

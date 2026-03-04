@@ -3,7 +3,6 @@
 import { PenLine, Clock, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { useSmartPoll } from '@/hooks/use-smart-poll';
-import { timeAgo } from '@/lib/utils';
 
 interface ContentItem {
   id: string;
