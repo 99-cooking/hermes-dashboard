@@ -25,6 +25,7 @@ import { TrendChart } from "@/components/ui/trend-chart";
 import { DataTable } from "@/components/ui/data-table";
 import type { SocialAnalyticsPoint, SocialAnalyticsSummary } from "@/lib/analytics";
 import { formatDurationSeconds } from "@/lib/analytics";
+import { timeAgo } from "@/lib/utils";
 import type {
   Ga4TopPage,
   Ga4TrafficSource,
@@ -61,6 +62,16 @@ interface PlausibleSeriesPoint {
   pageviews: number;
 }
 
+interface ProviderHealth {
+  latency_ms?: number;
+  attempts?: number;
+  retry_count?: number;
+  last_success_at?: string;
+  last_error_at?: string;
+  stale_after_seconds?: number;
+  next_retry_after_seconds?: number;
+}
+
 type WebsitePayload =
   | {
       provider: "ga4";
@@ -74,6 +85,7 @@ type WebsitePayload =
       countries?: Ga4GeoEntry[];
       error?: string;
       iframeUrl?: string;
+      health?: ProviderHealth;
     }
   | {
       provider: "plausible";
@@ -82,9 +94,10 @@ type WebsitePayload =
       series?: PlausibleSeriesPoint[];
       error?: string;
       iframeUrl?: string;
+      health?: ProviderHealth;
     }
-  | { provider: "iframe"; configured: boolean; iframeUrl: string }
-  | { provider: "none"; configured: false; error?: string; iframeUrl?: string };
+  | { provider: "iframe"; configured: boolean; iframeUrl: string; health?: ProviderHealth }
+  | { provider: "none"; configured: false; error?: string; iframeUrl?: string; health?: ProviderHealth };
 
 interface AnalyticsPayload {
   days: number;
@@ -104,6 +117,7 @@ interface AnalyticsPayload {
     };
     series?: { date: string; posts: number; likes: number; replies: number; reposts: number; quotes: number }[];
     error?: string;
+    health?: ProviderHealth;
   };
   linkedin: {
     provider: "linkedin";
@@ -120,6 +134,7 @@ interface AnalyticsPayload {
     };
     series?: { date: string; impressions: number; clicks: number; likes: number; comments: number; shares: number }[];
     error?: string;
+    health?: ProviderHealth;
   };
   social: {
     provider: "internal";
@@ -180,6 +195,28 @@ export default function AnalyticsPage() {
       </div>
 
       <SocialPanel social={data.social} series={socialSeries} />
+    </div>
+  );
+}
+
+function ProviderHealthHint({
+  health,
+  compact = false,
+}: {
+  health?: ProviderHealth;
+  compact?: boolean;
+}) {
+  if (!health) return null;
+  const parts: string[] = [];
+  if (typeof health.latency_ms === "number") parts.push(`${health.latency_ms}ms`);
+  if (typeof health.retry_count === "number") parts.push(`retries ${health.retry_count}`);
+  if (health.last_success_at) parts.push(`ok ${timeAgo(health.last_success_at)}`);
+  if (health.last_error_at) parts.push(`error ${timeAgo(health.last_error_at)}`);
+  if (parts.length === 0) return null;
+
+  return (
+    <div className={`text-[10px] text-muted-foreground ${compact ? "" : "mt-1"}`}>
+      {parts.join(" · ")}
     </div>
   );
 }
@@ -385,6 +422,7 @@ function WebsitePanel({ website }: { website: WebsitePayload }) {
             {website.provider.toUpperCase()}
           </span>
         </h3>
+        <ProviderHealthHint health={website.health} compact />
       </div>
 
       <div className="panel-body space-y-4">
@@ -573,6 +611,7 @@ function XPanel({ x, days }: { x: AnalyticsPayload["x"]; days: number }) {
             {x.configured ? `${days}d` : "OFF"}
           </span>
         </h3>
+        <ProviderHealthHint health={x.health} compact />
       </div>
       <div className="panel-body space-y-4">
         {x.configured && x.summary ? (
@@ -653,6 +692,7 @@ function LinkedInPanel({
             {linkedin.configured ? `${days}d` : "OFF"}
           </span>
         </h3>
+        <ProviderHealthHint health={linkedin.health} compact />
       </div>
       <div className="panel-body space-y-4">
         {linkedin.configured && s ? (

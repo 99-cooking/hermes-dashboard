@@ -11,7 +11,7 @@ interface CronJob {
   agentId: string;
   name: string;
   enabled: boolean;
-  schedule?: { kind?: string; expr?: string; tz?: string; at?: string; everyMs?: number };
+  schedule?: { kind?: string; expr?: string; tz?: string; at?: string; everyMs?: number; staggerMs?: number };
   payload?: { kind?: string; message?: string; thinking?: string };
   skill?: string;
   state?: { nextRunAtMs?: number };
@@ -71,8 +71,12 @@ function describeSchedule(job: CronJob): string {
   }
 
   const expr = schedule.expr?.trim();
-  if (!expr) return 'Cron schedule';
-  return describeCron(expr);
+  const base = expr ? describeCron(expr) : 'Cron schedule';
+  if (schedule.staggerMs && schedule.staggerMs > 0) {
+    const staggerSeconds = Math.max(1, Math.round(schedule.staggerMs / 1000));
+    return `${base} (stagger ${staggerSeconds}s)`;
+  }
+  return base;
 }
 
 export function CronStatus() {

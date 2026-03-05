@@ -120,3 +120,30 @@ test('upsert/toggle/trigger/delete support jobId-only records', async () => {
   const nextRun = jobAAfterTrigger.state && (jobAAfterTrigger.state as Record<string, unknown>).nextRunAtMs;
   assert.equal(typeof nextRun, 'number');
 });
+
+test('cron schedule and delivery fields are preserved for OpenClaw compatibility', async () => {
+  const jobsFile = {
+    version: 1,
+    jobs: [],
+  };
+
+  const next = upsertCronJob(jobsFile, {
+    jobId: 'compat-job',
+    enabled: true,
+    schedule: {
+      kind: 'cron',
+      expr: '0 9 * * 1-5',
+      tz: 'UTC',
+      staggerMs: 15_000,
+    },
+    delivery: {
+      mode: 'session_message',
+      sessionId: 'sess_123',
+    },
+  });
+
+  const job = next.jobs.find((item) => item.id === 'compat-job');
+  assert.ok(job);
+  assert.equal((job.schedule as Record<string, unknown>)?.staggerMs, 15_000);
+  assert.equal((job.delivery as Record<string, unknown>)?.mode, 'session_message');
+});

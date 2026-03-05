@@ -8,6 +8,7 @@ export type CronSchedule = {
   tz?: string;
   at?: string;
   everyMs?: number;
+  staggerMs?: number;
 };
 
 export type CronJobConfig = {
