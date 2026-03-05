@@ -90,4 +90,16 @@ test.describe('auth and api gate', () => {
     expect(Array.isArray(payload.tables)).toBeTruthy();
     expect(typeof payload.db_size_mb).toBe('number');
   });
+
+  test('cycle-time benchmark api returns before/after deltas after login', async ({ request }) => {
+    const headers = await getAuthHeaders(request);
+    const res = await request.get('/api/benchmarks/cycle-time?days=30', { headers });
+    expect(res.status()).toBe(200);
+    const payload = await res.json();
+    expect(payload.metric).toBe('lead_to_approved_campaign_cycle_time_hours');
+    expect(payload).toHaveProperty('before');
+    expect(payload).toHaveProperty('after');
+    expect(payload).toHaveProperty('delta');
+    expect(Array.isArray(payload.inclusion_rules)).toBeTruthy();
+  });
 });

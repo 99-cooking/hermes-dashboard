@@ -61,6 +61,21 @@ interface OverviewData {
 
 type Role = 'admin' | 'editor' | 'viewer';
 
+interface CycleTimeBenchmarkPayload {
+  metric: string;
+  days: number;
+  baseline_mode: 'rolling_window' | 'launch_anchored';
+  window: {
+    before: { start: string; end: string };
+    after: { start: string; end: string };
+    now: string;
+    launch_at: string | null;
+  };
+  before: { n: number; medianHours: number | null; p90Hours: number | null };
+  after: { n: number; medianHours: number | null; p90Hours: number | null };
+  delta: { median_pct: number | null; p90_pct: number | null };
+}
+
 export default function OverviewPage() {
   const { realOnly } = useDashboard();
   const realParam = realOnly ? '?real=true' : '';
@@ -75,6 +90,11 @@ export default function OverviewPage() {
   const { data: budget } = useSmartPoll<XBudget>(
     () => fetch('/api/x-budget').then(r => r.json()),
     { interval: 60_000 },
+  );
+
+  const { data: cycleBenchmark } = useSmartPoll<CycleTimeBenchmarkPayload>(
+    () => fetch(`/api/benchmarks/cycle-time?days=30${realOnly ? '&real=true' : ''}`).then(r => r.json()),
+    { interval: 300_000, key: `cycle-${realOnly}` },
   );
 
   useEffect(() => {
@@ -248,6 +268,8 @@ export default function OverviewPage() {
         />
       </div>
 
+      <CycleTimeBenchmarkPanel data={cycleBenchmark || undefined} />
+
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="panel">
@@ -377,6 +399,64 @@ function BudgetBar({ label, used, limit, icon }: { label: string; used: number; 
           }`}
           style={{ width: `${pct}%` }}
         />
+      </div>
+    </div>
+  );
+}
+
+function formatHours(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  if (value < 1) return `${Math.round(value * 60)}m`;
+  return `${value.toFixed(1)}h`;
+}
+
+function formatDelta(deltaPct: number | null): string {
+  if (deltaPct === null || !Number.isFinite(deltaPct)) return '—';
+  const rounded = Math.round(deltaPct * 10) / 10;
+  const prefix = rounded > 0 ? '+' : '';
+  return `${prefix}${rounded}%`;
+}
+
+function CycleTimeBenchmarkPanel({ data }: { data?: CycleTimeBenchmarkPayload }) {
+  if (!data) return null;
+  const improveCls = (data.delta.median_pct ?? -1) >= 0 ? 'text-success' : 'text-warning';
+
+  return (
+    <div className="panel">
+      <div className="panel-header flex items-center justify-between">
+        <h3 className="section-title">Lead → Approved Campaign Cycle Time</h3>
+        <span className="text-[10px] text-muted-foreground font-mono">
+          {data.baseline_mode === 'launch_anchored' ? 'launch anchored' : `rolling ${data.days}d`}
+        </span>
+      </div>
+      <div className="panel-body space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="card p-4">
+            <div className="text-xs text-muted-foreground">Before median</div>
+            <div className="text-lg font-mono font-semibold mt-1">{formatHours(data.before.medianHours)}</div>
+          </div>
+          <div className="card p-4">
+            <div className="text-xs text-muted-foreground">After median</div>
+            <div className="text-lg font-mono font-semibold mt-1">{formatHours(data.after.medianHours)}</div>
+          </div>
+          <div className="card p-4">
+            <div className="text-xs text-muted-foreground">Before p90</div>
+            <div className="text-lg font-mono font-semibold mt-1">{formatHours(data.before.p90Hours)}</div>
+          </div>
+          <div className="card p-4">
+            <div className="text-xs text-muted-foreground">After p90</div>
+            <div className="text-lg font-mono font-semibold mt-1">{formatHours(data.after.p90Hours)}</div>
+          </div>
+        </div>
+
+        <div className="card p-4 text-sm flex flex-wrap items-center justify-between gap-2">
+          <div className="text-muted-foreground">
+            n before <span className="font-mono text-foreground">{data.before.n}</span> · n after <span className="font-mono text-foreground">{data.after.n}</span>
+          </div>
+          <div className={`font-mono ${improveCls}`}>
+            median {formatDelta(data.delta.median_pct)} · p90 {formatDelta(data.delta.p90_pct)}
+          </div>
+        </div>
       </div>
     </div>
   );
